@@ -3,9 +3,11 @@ import { Chessboard } from 'react-chessboard'
 import { parsePgn, toMovePairs } from '../lib/pgn'
 import { analyzeGame, CLASS_META } from '../lib/analysis'
 import { loadOpenings } from '../lib/openings'
+import { fetchPlayerCard } from '../api/chessApi'
 import EvalBar from './EvalBar'
 import EvalGraph from './EvalGraph'
 import MoveBadge from './MoveBadge'
+import PlayerCards from './PlayerCards'
 
 const DEPTHS = [
   { label: 'Fast', value: 10 },
@@ -26,6 +28,7 @@ export default function GameViewer({ game, username }) {
   const [progress, setProgress] = useState(0)
   const [engineError, setEngineError] = useState(null)
   const [boardWidth, setBoardWidth] = useState(0)
+  const [cards, setCards] = useState({})
   const moveListRef = useRef(null)
   const boardRef = useRef(null)
   const cacheRef = useRef(new Map())
@@ -62,6 +65,24 @@ export default function GameViewer({ game, username }) {
   }, [game, username])
 
   useEffect(() => () => abortRef.current?.abort(), [])
+
+  // Fetch both players' profiles (avatar, title, current ratings).
+  useEffect(() => {
+    if (!game) return
+    let cancelled = false
+    const names = [game.white?.username, game.black?.username].filter(Boolean)
+    Promise.all(names.map((n) => fetchPlayerCard(n))).then((results) => {
+      if (cancelled) return
+      setCards((prev) => {
+        const next = { ...prev }
+        results.forEach((c) => c && (next[c.username.toLowerCase()] = c))
+        return next
+      })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [game])
 
   useEffect(() => {
     function onKey(e) {
@@ -166,18 +187,19 @@ export default function GameViewer({ game, username }) {
       </div>
 
       <div className="viewer__sidebar">
-        <h2 className="viewer__title">
-          {headers.White} <span className="muted">vs</span> {headers.Black}
-        </h2>
+        <PlayerCards game={game} cards={cards} />
         <p className="viewer__sub muted">
           {headers.Result} · {headers.ECO ? `${headers.ECO} ` : ''}
           {headers.TimeControl ? `· ${headers.TimeControl}` : ''}
+          {game.url && (
+            <>
+              {' · '}
+              <a className="viewer__link" href={game.url} target="_blank" rel="noreferrer">
+                chess.com ↗
+              </a>
+            </>
+          )}
         </p>
-        {game.url && (
-          <a className="viewer__link" href={game.url} target="_blank" rel="noreferrer">
-            View on chess.com ↗
-          </a>
-        )}
 
         <div className="analyze">
           {!analysis && !analyzing && (

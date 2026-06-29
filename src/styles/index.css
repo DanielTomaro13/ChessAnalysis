@@ -165,7 +165,44 @@ button:disabled { opacity: 0.5; cursor: default; }
   min-height: 0;
 }
 .viewer__title { margin: 0; font-size: 1.1rem; }
-.viewer__sub { margin: 0.25rem 0 0.5rem; font-size: 0.85rem; }
+.viewer__sub { margin: 0.4rem 0 0.5rem; font-size: 0.8rem; }
+
+/* ---- player cards ---- */
+.players { display: flex; flex-direction: column; gap: 0.4rem; }
+.player {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.4rem 0.55rem;
+}
+.player__dot { width: 11px; height: 11px; border-radius: 50%; border: 1px solid #000; flex: 0 0 auto; }
+.player__avatar {
+  width: 34px; height: 34px; border-radius: 6px; object-fit: cover; flex: 0 0 auto;
+  background: var(--panel-2);
+}
+.player__avatar--fallback {
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; color: var(--muted); font-size: 1rem;
+}
+.player__info { flex: 1; min-width: 0; }
+.player__name {
+  display: block; color: var(--text); text-decoration: none; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.player__name:hover { color: var(--accent); }
+.player__title {
+  font-style: normal; font-weight: 800; color: #c79a3b; margin-right: 0.3rem; font-size: 0.85em;
+}
+.player__flag { font-size: 0.9em; }
+.player__ratings { display: flex; gap: 0.45rem; font-size: 0.72rem; color: var(--muted); margin-top: 1px; }
+.rt { font-variant-numeric: tabular-nums; }
+.rt--active { color: var(--accent); font-weight: 700; }
+.player__result {
+  flex: 0 0 auto; font-weight: 800; font-size: 1rem; width: 1.2rem; text-align: center;
+}
 .viewer__link { color: var(--accent); text-decoration: none; font-size: 0.85rem; }
 .viewer__link:hover { text-decoration: underline; }
 

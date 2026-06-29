@@ -93,12 +93,13 @@ function offersSacrifice(fenAfter) {
   return best >= 2
 }
 
-// Estimated performance rating for a single game from its accuracy %.
-// Piecewise-linear fit to roughly match chess.com's per-game estimate.
+// Rough single-game performance rating from accuracy %. Recalibrated to be
+// conservative — accuracy alone over-rates quiet games, so the mid range is
+// deliberately modest.
 const RATING_TABLE = [
-  [40, 250], [50, 600], [55, 800], [60, 1000], [65, 1200],
-  [70, 1400], [75, 1600], [80, 1850], [85, 2100], [90, 2350],
-  [95, 2600], [99, 2850],
+  [40, 300], [50, 450], [60, 650], [65, 800], [70, 950],
+  [75, 1100], [80, 1300], [85, 1600], [90, 1950], [93, 2200],
+  [96, 2500], [99, 2800],
 ]
 export function estimatedRating(acc) {
   if (acc == null) return null
@@ -115,12 +116,56 @@ export function estimatedRating(acc) {
   return t[t.length - 1][1]
 }
 
+// Per-move accuracy from win% lost (lichess formula). Floored above 0 so the
+// harmonic mean below can't blow up on a single catastrophic move.
 function moveAccuracy(winLoss) {
-  return Math.max(0, Math.min(100, 103.1668 * Math.exp(-0.04354 * winLoss) - 3.1669))
+  return Math.max(0.5, Math.min(100, 103.1668 * Math.exp(-0.04354 * winLoss) - 3.1669))
 }
 
 function mean(xs) {
   return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null
+}
+
+function stdev(xs) {
+  if (xs.length < 2) return 0
+  const m = mean(xs)
+  return Math.sqrt(mean(xs.map((x) => (x - m) ** 2)))
+}
+
+/**
+ * Game accuracy per color, following lichess's method: blend a
+ * volatility-weighted mean (sharp positions matter more) with a harmonic mean
+ * (one bad move drags the whole score down). This is what stops blundery games
+ * from scoring deceptively high.
+ *
+ * @param {number[]} winWhite  White-POV win% for every position (length P)
+ * @param {number[]} moveAccs  per-move accuracy (length P-1)
+ */
+function colorAccuracies(winWhite, moveAccs) {
+  const P = winWhite.length
+  const windowSize = Math.max(2, Math.min(8, Math.round(P / 10) || 2))
+  const weights = []
+  for (let i = 0; i < moveAccs.length; i++) {
+    const end = i + 1
+    const window = winWhite.slice(Math.max(0, end - windowSize), end)
+    weights.push(Math.max(0.5, Math.min(12, stdev(window))))
+  }
+  const forColor = (white) => {
+    const accs = []
+    const wts = []
+    for (let i = 0; i < moveAccs.length; i++) {
+      if ((i % 2 === 0) === white) {
+        accs.push(moveAccs[i])
+        wts.push(weights[i])
+      }
+    }
+    if (!accs.length) return null
+    const wSum = wts.reduce((a, b) => a + b, 0)
+    const weighted = accs.reduce((s, a, k) => s + a * wts[k], 0) / wSum
+    const harmonic = accs.length / accs.reduce((s, a) => s + 1 / a, 0)
+    return (weighted + harmonic) / 2
+  }
+  return { white: forColor(true), black: forColor(false) }
 }
 
 function toWhite(cp, mate, sideWhite) {
@@ -183,8 +228,8 @@ export async function analyzeGame(fens, moves, { depth = 13, onProgress, signal,
   }
 
   const annotations = new Array(moves.length)
-  const accWhite = []
-  const accBlack = []
+  const winWhite = evals.map((e) => winPercent(e.whiteCp))
+  const moveAccs = new Array(moves.length)
 
   for (let i = 0; i < moves.length; i++) {
     const sideWhite = i % 2 === 0
@@ -217,7 +262,7 @@ export async function analyzeGame(fens, moves, { depth = 13, onProgress, signal,
     const acc = moveAccuracy(winLoss)
 
     annotations[i] = { ply: i + 1, class: klass, winLoss, accuracy: acc, bestMove: before.bestMove }
-    ;(sideWhite ? accWhite : accBlack).push(acc)
+    moveAccs[i] = acc
   }
 
   const counts = (white) => {
@@ -228,8 +273,7 @@ export async function analyzeGame(fens, moves, { depth = 13, onProgress, signal,
     return out
   }
 
-  const accuracyWhite = mean(accWhite)
-  const accuracyBlack = mean(accBlack)
+  const { white: accuracyWhite, black: accuracyBlack } = colorAccuracies(winWhite, moveAccs)
   return {
     evals,
     annotations,

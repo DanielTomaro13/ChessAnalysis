@@ -43,6 +43,45 @@ export async function fetchProfile(username) {
   }
 }
 
+function countryToFlag(code) {
+  if (!code || code.length !== 2) return null
+  return code
+    .toUpperCase()
+    .replace(/./g, (c) => String.fromCodePoint(0x1f1e6 + c.charCodeAt(0) - 65))
+}
+
+const cardCache = new Map()
+
+/**
+ * Profile + current ratings for a player, for the profile cards.
+ * Combines /player/{u} and /player/{u}/stats. Cached per username.
+ */
+export async function fetchPlayerCard(username) {
+  const key = username.toLowerCase()
+  if (cardCache.has(key)) return cardCache.get(key)
+  const u = cleanUsername(username)
+  const [profile, stats] = await Promise.all([
+    fetch(`${BASE}/player/${u}`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    fetch(`${BASE}/player/${u}/stats`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+  ])
+  const countryCode = profile?.country ? profile.country.split('/').pop() : null
+  const card = {
+    username,
+    name: profile?.name || null,
+    title: profile?.title || null,
+    avatar: profile?.avatar || null,
+    flag: countryToFlag(countryCode),
+    url: profile?.url || `https://www.chess.com/member/${username}`,
+    ratings: {
+      bullet: stats?.chess_bullet?.last?.rating ?? null,
+      blitz: stats?.chess_blitz?.last?.rating ?? null,
+      rapid: stats?.chess_rapid?.last?.rating ?? null,
+    },
+  }
+  cardCache.set(key, card)
+  return card
+}
+
 /**
  * Turn an archive URL (".../games/2024/03") into a friendly label ("March 2024").
  */
