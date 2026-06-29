@@ -1,8 +1,10 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Chessboard } from 'react-chessboard'
+import { Chess } from 'chess.js'
 import { parsePgn, toMovePairs } from '../lib/pgn'
 import { analyzeGame, CLASS_META } from '../lib/analysis'
 import { loadOpenings } from '../lib/openings'
+import { addMistakes } from '../lib/puzzles'
 import { fetchPlayerCard } from '../api/chessApi'
 import EvalBar from './EvalBar'
 import EvalGraph from './EvalGraph'
@@ -122,6 +124,7 @@ export default function GameViewer({ game, username }) {
       if (!controller.signal.aborted) {
         cacheRef.current.set(game.url, result)
         setAnalysis(result)
+        addMistakes(username, harvestMistakes(result, parsed, game, username))
       }
     } catch (e) {
       if (e.name !== 'AbortError') setEngineError(e.message || 'Engine failed')
@@ -250,6 +253,41 @@ export default function GameViewer({ game, username }) {
       </div>
     </div>
   )
+}
+
+// Collect the searched player's mistakes/blunders into "find the best move"
+// puzzles for the Puzzles → My mistakes tab.
+function harvestMistakes(result, parsed, game, username) {
+  const u = username.toLowerCase()
+  const userIsWhite = game.white?.username?.toLowerCase() === u
+  const isPlayer = userIsWhite || game.black?.username?.toLowerCase() === u
+  if (!isPlayer) return []
+  const opponent = userIsWhite ? game.black?.username : game.white?.username
+  const out = []
+  result.annotations.forEach((a, i) => {
+    if ((i % 2 === 0) !== userIsWhite) return
+    if (!['mistake', 'blunder', 'miss'].includes(a.class) || !a.bestMove) return
+    const fen = parsed.fens[i]
+    let bestSan = a.bestMove
+    try {
+      const c = new Chess(fen)
+      const m = c.move({ from: a.bestMove.slice(0, 2), to: a.bestMove.slice(2, 4), promotion: a.bestMove[4] })
+      bestSan = m?.san || a.bestMove
+    } catch {
+      /* keep uci */
+    }
+    out.push({
+      fen,
+      solution: [a.bestMove],
+      playedSan: parsed.sans[i],
+      bestSan,
+      class: a.class,
+      gameUrl: game.url,
+      opponent,
+      sideWhite: userIsWhite,
+    })
+  })
+  return out
 }
 
 function MoveButton({ move, ann, current, onClick }) {

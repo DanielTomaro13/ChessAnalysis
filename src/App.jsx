@@ -2,9 +2,11 @@ import { useState } from 'react'
 import UsernameForm from './components/UsernameForm'
 import GameList from './components/GameList'
 import GameViewer from './components/GameViewer'
+import Puzzles from './components/Puzzles'
 import { fetchArchives, fetchGamesForArchive } from './api/chessApi'
 
 export default function App() {
+  const [view, setView] = useState('review')
   const [username, setUsername] = useState('')
   const [archives, setArchives] = useState([])
   const [selectedArchive, setSelectedArchive] = useState(null)
@@ -60,15 +62,29 @@ export default function App() {
   return (
     <div className="app">
       <header className="app__header">
-        <h1>♟ Chess Analysis</h1>
-        <p className="tagline">
-          Review any chess.com player’s games — free, no premium account needed.
-        </p>
-        <UsernameForm onSubmit={handleUsername} loading={loadingUser} />
-        {error && <p className="error">{error}</p>}
+        <div className="app__titlebar">
+          <h1>♟ Chess Analysis</h1>
+          <nav className="app__nav">
+            <button className={view === 'review' ? 'is-active' : ''} onClick={() => setView('review')}>
+              Review
+            </button>
+            <button className={view === 'puzzles' ? 'is-active' : ''} onClick={() => setView('puzzles')}>
+              Puzzles
+            </button>
+          </nav>
+        </div>
+        {view === 'review' && (
+          <>
+            <p className="tagline">
+              Review any chess.com player’s games — free, no premium account needed.
+            </p>
+            <UsernameForm onSubmit={handleUsername} loading={loadingUser} />
+            {error && <p className="error">{error}</p>}
+          </>
+        )}
       </header>
 
-      {archives.length > 0 && (
+      {view === 'review' && archives.length > 0 && (
         <main className="app__main">
           <aside className="app__sidebar">
             <GameList
@@ -88,9 +104,11 @@ export default function App() {
         </main>
       )}
 
+      {view === 'puzzles' && <Puzzles username={username} />}
+
       <footer className="app__footer muted">
-        Data from the public Chess.com API. Not affiliated with Chess.com.
-        Engine analysis &amp; puzzles coming next.
+        Game data from the public Chess.com API; puzzles from the open Lichess
+        database. Not affiliated with Chess.com or Lichess.
       </footer>
     </div>
   )

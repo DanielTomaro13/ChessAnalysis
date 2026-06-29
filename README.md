@@ -12,7 +12,7 @@ plus tactics generated from your own games.
 
 - [x] **Phase 1 — Game viewer**: enter a username, browse games by month, replay any game with move list + keyboard navigation.
 - [x] **Phase 2 — Game review**: single-threaded Stockfish (WASM) eval bar, best-move arrows, move classification (inaccuracy/mistake/blunder), per-side accuracy %, and an eval graph. Runs entirely in the browser.
-- [ ] **Phase 3 — Puzzles**: Lichess puzzle trainer + "your mistakes" puzzles.
+- [x] **Phase 3 — Puzzles**: Lichess puzzle trainer (5.7k bundled puzzles, rating + difficulty + streak) and a "My mistakes" trainer that turns blunders found in your analyzed games into solvable puzzles. Progress is kept in `localStorage`.
 
 ### Engine notes
 
