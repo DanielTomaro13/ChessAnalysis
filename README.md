@@ -11,8 +11,15 @@ plus tactics generated from your own games.
 ## Status
 
 - [x] **Phase 1 — Game viewer**: enter a username, browse games by month, replay any game with move list + keyboard navigation.
-- [ ] **Phase 2 — Game review**: Stockfish eval bar, move classification (blunder/mistake/inaccuracy), accuracy %.
+- [x] **Phase 2 — Game review**: single-threaded Stockfish (WASM) eval bar, best-move arrows, move classification (inaccuracy/mistake/blunder), per-side accuracy %, and an eval graph. Runs entirely in the browser.
 - [ ] **Phase 3 — Puzzles**: Lichess puzzle trainer + "your mistakes" puzzles.
+
+### Engine notes
+
+Phase 2 bundles Stockfish.js v10 (single-threaded HCE) in `public/engine/`. A
+single-threaded build is required because GitHub Pages can't send the
+COOP/COEP headers that `SharedArrayBuffer` (threaded WASM) needs. The engine
+runs in a Web Worker; pick Fast/Balanced/Deep search depth before analyzing.
 
 ## Develop
 

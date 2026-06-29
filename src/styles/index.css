@@ -198,6 +198,77 @@ button:disabled { opacity: 0.5; cursor: default; }
 .move:hover { background: var(--panel-2); }
 .move.is-current { background: var(--accent-dim); color: #fff; font-weight: 700; }
 
+.move__sym { font-size: 0.75em; font-weight: 700; margin-left: 1px; }
+
+/* ---- eval bar ---- */
+.board-row { display: flex; gap: 8px; align-items: stretch; }
+.board-row__board { flex: 1; min-width: 0; }
+.evalbar {
+  position: relative;
+  width: 22px;
+  flex: 0 0 22px;
+  background: #2a2a2a;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.evalbar--empty { background: var(--panel-2); }
+.evalbar__white { position: absolute; left: 0; right: 0; background: #f0f0f0; transition: height 0.2s ease; }
+.evalbar__text {
+  position: absolute;
+  left: 0; right: 0;
+  text-align: center;
+  font-size: 0.62rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.evalbar__text.on-white { color: #f0f0f0; }
+.evalbar__text.on-black { color: #1a1a1a; }
+
+/* ---- eval graph ---- */
+.evalgraph {
+  width: 100%;
+  height: 64px;
+  margin-top: 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  cursor: pointer;
+  display: block;
+}
+.evalgraph__whitezone { fill: rgba(240, 240, 240, 0.06); }
+.evalgraph__blackzone { fill: rgba(0, 0, 0, 0.25); }
+.evalgraph__fill { fill: rgba(127, 166, 80, 0.18); }
+.evalgraph__line { fill: none; stroke: var(--accent); stroke-width: 1.4; vector-effect: non-scaling-stroke; }
+.evalgraph__mid { stroke: var(--border); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.evalgraph__cursor { stroke: #e8e2d0; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+
+/* ---- analyze panel ---- */
+.analyze { margin: 0.85rem 0 0.25rem; }
+.analyze__start { display: flex; gap: 0.5rem; }
+.analyze__btn { background: var(--accent-dim); border-color: var(--accent-dim); flex: 1; font-weight: 600; }
+.analyze__start select {
+  background: var(--panel-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px; padding: 0 0.5rem;
+}
+.analyze__progress { display: flex; align-items: center; gap: 0.6rem; }
+.bar { flex: 1; height: 8px; background: var(--panel-2); border-radius: 5px; overflow: hidden; }
+.bar__fill { height: 100%; background: var(--accent); transition: width 0.15s linear; }
+.analyze__cancel { font-size: 0.8rem; padding: 0.35rem 0.6rem; }
+
+.acc {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+}
+.acc__head { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.3rem; }
+.acc__row { display: grid; grid-template-columns: 3.5rem 3.5rem 1fr; align-items: center; gap: 0.4rem; padding: 0.15rem 0; }
+.acc__name { font-weight: 600; }
+.acc__pct { font-variant-numeric: tabular-nums; font-weight: 700; }
+.acc__counts { display: flex; gap: 0.5rem; font-size: 0.8rem; }
+.acc__counts em { font-style: normal; font-weight: 700; }
+
 .app__footer {
   margin-top: 2rem;
   padding-top: 1rem;
