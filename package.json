@@ -1,0 +1,22 @@
+{
+  "name": "chess-analysis",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Review your chess.com games and train with puzzles — free, runs entirely in the browser.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "chess.js": "^1.0.0",
+    "react": "^18.3.1",
+    "react-chessboard": "^2.1.3",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.0.7"
+  }
+}
