@@ -63,22 +63,26 @@ export class Engine {
     // NOTE: this Stockfish.js v10 build is hardwired to 1 thread / 16MB hash
     // (Threads + Hash report min==max), and sending a `setoption` for them
     // makes the engine swallow the following `isready` and never reply
-    // `readyok`. So we skip setoption entirely and just sync with isready.
+    // `readyok`. So sync with isready FIRST, then set MultiPV and never
+    // isready again (verified safe with this build).
     this.send('isready')
     await this.waitFor((l) => (l.startsWith('readyok') ? true : false))
+    this.send('setoption name MultiPV value 2')
   }
 
   /**
-   * Analyze a position to a fixed depth.
-   * Score is returned from the side-to-move's perspective (UCI convention).
-   * @returns {Promise<{scoreCp:number|null, mate:number|null, bestMove:string|null, pv:string[]}>}
+   * Analyze a position to a fixed depth with MultiPV 2.
+   * Scores are from the side-to-move's perspective (UCI convention).
+   * Returns the best line plus the second-best line (for "only move" detection).
    */
   async analyze(fen, depth = 14) {
-    let last = null
+    const byMpv = {} // multipv index -> latest info at greatest depth
     const collect = (line) => {
       if (line.startsWith('info') && line.includes(' pv ')) {
+        const m = line.match(/ multipv (\d+)/)
+        const idx = m ? parseInt(m[1], 10) : 1
         const info = parseInfo(line)
-        if (info) last = info
+        if (info) byMpv[idx] = info
       }
     }
     this.listeners.push(collect)
@@ -88,11 +92,17 @@ export class Engine {
       l.startsWith('bestmove') ? l.split(/\s+/)[1] : false,
     )
     this.listeners = this.listeners.filter((l) => l !== collect)
+
+    const l1 = byMpv[1]
+    const l2 = byMpv[2]
     return {
-      scoreCp: last?.mate == null ? (last?.cp ?? 0) : null,
-      mate: last?.mate ?? null,
+      scoreCp: l1?.mate == null ? (l1?.cp ?? 0) : null,
+      mate: l1?.mate ?? null,
+      secondScoreCp: l2 ? (l2.mate == null ? l2.cp : null) : null,
+      secondMate: l2 ? (l2.mate ?? null) : null,
+      hasSecond: !!l2,
       bestMove: bestMove && bestMove !== '(none)' ? bestMove : null,
-      pv: last?.pv ?? [],
+      pv: l1?.pv ?? [],
     }
   }
 

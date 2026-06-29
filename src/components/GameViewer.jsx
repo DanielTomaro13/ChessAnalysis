@@ -1,15 +1,20 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Chessboard } from 'react-chessboard'
 import { parsePgn, toMovePairs } from '../lib/pgn'
 import { analyzeGame, CLASS_META } from '../lib/analysis'
+import { loadOpenings } from '../lib/openings'
 import EvalBar from './EvalBar'
 import EvalGraph from './EvalGraph'
+import MoveBadge from './MoveBadge'
 
 const DEPTHS = [
   { label: 'Fast', value: 10 },
   { label: 'Balanced', value: 13 },
   { label: 'Deep', value: 16 },
 ]
+
+// chips shown in the accuracy summary (skip the unremarkable categories)
+const CHIP_KEYS = ['brilliant', 'great', 'inaccuracy', 'mistake', 'miss', 'blunder']
 
 export default function GameViewer({ game, username }) {
   const parsed = useMemo(() => (game ? parsePgn(game.pgn) : null), [game])
@@ -20,14 +25,28 @@ export default function GameViewer({ game, username }) {
   const [analyzing, setAnalyzing] = useState(false)
   const [progress, setProgress] = useState(0)
   const [engineError, setEngineError] = useState(null)
+  const [boardWidth, setBoardWidth] = useState(0)
   const moveListRef = useRef(null)
-  const cacheRef = useRef(new Map()) // game.url -> analysis result
+  const boardRef = useRef(null)
+  const cacheRef = useRef(new Map())
   const abortRef = useRef(null)
 
   const total = parsed ? parsed.fens.length - 1 : 0
   const goTo = (p) => setPly(Math.max(0, Math.min(total, p)))
 
-  // New game: reset, orient board to the searched player, load cached analysis.
+  // Measure the board so the badge overlay lines up with the squares.
+  // Depends on `game` because the board element only exists once a game is
+  // open — a bare [] effect would run while boardRef is still null.
+  useLayoutEffect(() => {
+    const el = boardRef.current
+    if (!el) return
+    const measure = () => setBoardWidth(el.clientWidth)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [game])
+
   useEffect(() => {
     setPly(0)
     setEngineError(null)
@@ -44,7 +63,6 @@ export default function GameViewer({ game, username }) {
 
   useEffect(() => () => abortRef.current?.abort(), [])
 
-  // Keyboard navigation.
   useEffect(() => {
     function onKey(e) {
       if (e.key === 'ArrowLeft') goTo(ply - 1)
@@ -59,7 +77,6 @@ export default function GameViewer({ game, username }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [ply, total])
 
-  // Keep the current move in view.
   useEffect(() => {
     moveListRef.current
       ?.querySelector('.move.is-current')
@@ -74,8 +91,10 @@ export default function GameViewer({ game, username }) {
     setEngineError(null)
     setProgress(0)
     try {
+      const book = await loadOpenings()
       const result = await analyzeGame(parsed.fens, parsed.moves, {
         depth,
+        book,
         signal: controller.signal,
         onProgress: (frac) => setProgress(frac),
       })
@@ -105,12 +124,16 @@ export default function GameViewer({ game, username }) {
     ? [[bestMove.slice(0, 2), bestMove.slice(2, 4), 'rgba(127,166,80,0.85)']]
     : []
 
+  // Badge for the move that produced the current position.
+  const playedMove = ply > 0 ? moves[ply - 1] : null
+  const playedClass = analysis && ply > 0 ? analysis.annotations[ply - 1]?.class : null
+
   return (
     <div className="viewer">
       <div className="viewer__board">
         <div className="board-row">
           <EvalBar evalObj={currentEval} flipped={flipped} />
-          <div className="board-row__board">
+          <div className="board-row__board" ref={boardRef}>
             <Chessboard
               position={fens[ply]}
               boardOrientation={flipped ? 'black' : 'white'}
@@ -119,6 +142,14 @@ export default function GameViewer({ game, username }) {
               customDarkSquareStyle={{ backgroundColor: '#6f8d57' }}
               customLightSquareStyle={{ backgroundColor: '#eeeed2' }}
             />
+            {playedMove && (
+              <MoveBadge
+                square={playedMove.to}
+                boardWidth={boardWidth}
+                flipped={flipped}
+                klass={playedClass}
+              />
+            )}
           </div>
         </div>
 
@@ -131,9 +162,7 @@ export default function GameViewer({ game, username }) {
           <button onClick={() => setFlipped((f) => !f)} title="Flip (f)">⟲</button>
         </div>
 
-        {analysis && (
-          <EvalGraph evals={analysis.evals} ply={ply} onSeek={goTo} />
-        )}
+        {analysis && <EvalGraph evals={analysis.evals} ply={ply} onSeek={goTo} />}
       </div>
 
       <div className="viewer__sidebar">
@@ -150,18 +179,13 @@ export default function GameViewer({ game, username }) {
           </a>
         )}
 
-        {/* Engine review controls */}
         <div className="analyze">
           {!analysis && !analyzing && (
             <div className="analyze__start">
-              <button className="analyze__btn" onClick={handleAnalyze}>
-                ⚙ Analyze game
-              </button>
+              <button className="analyze__btn" onClick={handleAnalyze}>⚙ Analyze game</button>
               <select value={depth} onChange={(e) => setDepth(Number(e.target.value))}>
                 {DEPTHS.map((d) => (
-                  <option key={d.value} value={d.value}>
-                    {d.label} (depth {d.value})
-                  </option>
+                  <option key={d.value} value={d.value}>{d.label} (depth {d.value})</option>
                 ))}
               </select>
             </div>
@@ -222,23 +246,29 @@ function MoveButton({ move, ann, current, onClick }) {
 }
 
 function AccuracySummary({ analysis }) {
-  const { accuracyWhite, accuracyBlack, countsWhite, countsBlack } = analysis
-  const row = (label, acc, counts) => (
-    <div className="acc__row">
-      <span className="acc__name">{label}</span>
-      <span className="acc__pct">{acc != null ? acc.toFixed(1) + '%' : '—'}</span>
-      <span className="acc__counts">
-        {counts.inaccuracy > 0 && <em style={{ color: CLASS_META.inaccuracy.color }}>{counts.inaccuracy}?!</em>}
-        {counts.mistake > 0 && <em style={{ color: CLASS_META.mistake.color }}>{counts.mistake}?</em>}
-        {counts.blunder > 0 && <em style={{ color: CLASS_META.blunder.color }}>{counts.blunder}??</em>}
-      </span>
-    </div>
-  )
+  const rows = [
+    { name: 'White', acc: analysis.accuracyWhite, rating: analysis.ratingWhite, counts: analysis.countsWhite },
+    { name: 'Black', acc: analysis.accuracyBlack, rating: analysis.ratingBlack, counts: analysis.countsBlack },
+  ]
   return (
     <div className="acc">
-      <div className="acc__head muted">Accuracy</div>
-      {row('White', accuracyWhite, countsWhite)}
-      {row('Black', accuracyBlack, countsBlack)}
+      <div className="acc__cols muted">
+        <span>Player</span><span>Accuracy</span><span>Est. rating</span>
+      </div>
+      {rows.map((r) => (
+        <div key={r.name} className="acc__row">
+          <span className="acc__name">{r.name}</span>
+          <span className="acc__pct">{r.acc != null ? r.acc.toFixed(1) + '%' : '—'}</span>
+          <span className="acc__rating">{r.rating ?? '—'}</span>
+          <span className="acc__chips">
+            {CHIP_KEYS.filter((k) => r.counts[k] > 0).map((k) => (
+              <em key={k} style={{ color: CLASS_META[k].color }} title={CLASS_META[k].label}>
+                {r.counts[k]}{CLASS_META[k].glyph}
+              </em>
+            ))}
+          </span>
+        </div>
+      ))}
     </div>
   )
 }
