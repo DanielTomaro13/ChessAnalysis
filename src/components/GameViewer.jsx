@@ -13,6 +13,7 @@ import { fetchPlayerCard } from '../api/chessApi'
 import { openingName } from '../api/explorer'
 import { buildGameLink, copyLink } from '../lib/share'
 import { buildAnnotatedPgn, downloadPgn } from '../lib/exportPgn'
+import { isSaved, toggleSaved } from '../lib/library'
 import EvalBar from './EvalBar'
 import EvalGraph from './EvalGraph'
 import MoveBadge from './MoveBadge'
@@ -35,6 +36,7 @@ export default function GameViewer({ game, username, initialPly = 0 }) {
   const parsed = useMemo(() => (game ? parsePgn(game.pgn) : null), [game])
   const [ply, setPly] = useState(initialPly)
   const [copied, setCopied] = useState(false)
+  const [saved, setSaved] = useState(false)
   const [flipped, setFlipped] = useState(false)
   const [depth, setDepth] = useState(getSettings().depth)
   const [analysis, setAnalysis] = useState(null)
@@ -185,6 +187,7 @@ export default function GameViewer({ game, username, initialPly = 0 }) {
       return
     }
     setFlipped(game.black?.username?.toLowerCase() === username.toLowerCase())
+    setSaved(isSaved(game.url))
     const memo = cacheRef.current.get(game.url)
     setAnalysis(memo ?? null)
     if (memo) return
@@ -397,6 +400,14 @@ export default function GameViewer({ game, username, initialPly = 0 }) {
         <PlayerCards game={game} cards={cards} />
         {openingName(headers) && <p className="viewer__opening">📖 {openingName(headers)}</p>}
         <p className="viewer__sub muted">
+          <button
+            className="linklike"
+            onClick={() => setSaved(toggleSaved(game, username))}
+            title={saved ? 'Remove from saved' : 'Save game'}
+          >
+            {saved ? '★ Saved' : '☆ Save'}
+          </button>
+          {' · '}
           {headers.Result} · {headers.ECO ? `${headers.ECO} ` : ''}
           {headers.TimeControl ? `· ${headers.TimeControl}` : ''}
           {!game.imported && game.url && (

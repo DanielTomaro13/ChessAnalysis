@@ -1,20 +1,6 @@
 import { getProgress, ACHIEVEMENTS } from '../lib/progress'
 import { getPuzzleRating, getSolvedCount, getRatingHistory } from '../lib/puzzles'
-
-function Sparkline({ data }) {
-  if (data.length < 2) return null
-  const W = 280, H = 60
-  const min = Math.min(...data), max = Math.max(...data)
-  const range = max - min || 1
-  const pts = data
-    .map((v, i) => `${(i / (data.length - 1)) * W},${H - ((v - min) / range) * (H - 6) - 3}`)
-    .join(' ')
-  return (
-    <svg className="spark" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
-      <polyline points={pts} fill="none" stroke="var(--accent)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
-    </svg>
-  )
-}
+import Sparkline from './Sparkline'
 
 export default function PuzzleStats() {
   const p = getProgress()

@@ -610,6 +610,25 @@ button:disabled { opacity: 0.5; cursor: default; }
 .rep__l { background: var(--loss); }
 .rep__pct { text-align: right; font-variant-numeric: tabular-nums; }
 
+/* saved games list */
+.game-list__summary { flex-wrap: wrap; }
+.game-list__spark { display: inline-flex; width: 90px; height: 20px; opacity: 0.8; }
+.saved__item { position: relative; }
+.saved__rm {
+  position: absolute; top: 50%; right: 6px; transform: translateY(-50%);
+  background: transparent; border: none; color: var(--muted); font-size: 0.85rem; padding: 0.2rem 0.4rem;
+}
+.saved__rm:hover { color: var(--loss); }
+.game-row--none { /* neutral (imported / unknown side) */ }
+
+/* head-to-head */
+.h2h__row {
+  width: 100%; display: grid; grid-template-columns: 1fr 4.5rem 5rem 2.4rem; gap: 0.5rem; align-items: center;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.35rem 0.5rem; text-align: left;
+}
+.h2h__row:hover { border-color: var(--accent-dim); }
+.h2h__rec { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 0.85rem; }
+
 .app__footer {
   margin-top: 2rem;
   padding-top: 1rem;

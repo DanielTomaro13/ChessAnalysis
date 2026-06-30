@@ -3,6 +3,7 @@ import UsernameForm from './components/UsernameForm'
 import GameList from './components/GameList'
 import GameViewer from './components/GameViewer'
 import Puzzles from './components/Puzzles'
+import SavedGames from './components/SavedGames'
 import SettingsModal from './components/SettingsModal'
 import ImportModal from './components/ImportModal'
 import { fetchArchives, fetchGamesForArchive } from './api/chessApi'
@@ -122,6 +123,9 @@ export default function App() {
             <button className={view === 'puzzles' ? 'is-active' : ''} onClick={() => setView('puzzles')}>
               Puzzles
             </button>
+            <button className={view === 'saved' ? 'is-active' : ''} onClick={() => setView('saved')}>
+              Saved
+            </button>
             <button
               className="app__mute"
               title={muted ? 'Unmute sounds' : 'Mute sounds'}
@@ -180,6 +184,8 @@ export default function App() {
       )}
 
       {view === 'puzzles' && <Puzzles username={username} initialPuzzleId={puzzleId} />}
+
+      {view === 'saved' && <SavedGames />}
 
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
       {showImport && (

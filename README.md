@@ -71,8 +71,10 @@ Done:
       it with the full engine pipeline; an engine **multi-line** panel; an
       **opening repertoire** breakdown (W/D/L per opening, by colour); and
       **annotated PGN export** (NAGs + evals).
-
-Ideas for later: a saved-games library and a head-to-head view.
+- [x] **Phase 8 — Library & opponents**: a **saved-games library** (star any
+      game/PGN, revisit it from the Saved tab), a **head-to-head** view (your
+      record vs each opponent, click to filter), and a **rating-trend
+      sparkline** for the loaded month.
 
 ## Tech
 
