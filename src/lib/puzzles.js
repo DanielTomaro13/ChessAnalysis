@@ -34,6 +34,19 @@ export function pickPuzzle(puzzles, rating, excludeIds = new Set(), theme = null
   return any.length ? any[Math.floor(Math.random() * any.length)] : null
 }
 
+/**
+ * Deterministic "puzzle of the day": everyone solving on the same calendar day
+ * gets the same puzzle, picked from a medium-difficulty band for broad appeal.
+ */
+export function pickDailyPuzzle(puzzles, dateStr = new Date().toISOString().slice(0, 10)) {
+  if (!puzzles || !puzzles.length) return null
+  const pool = puzzles.filter((p) => p.rating >= 1100 && p.rating <= 1700)
+  const list = pool.length ? pool : puzzles
+  let h = 5381
+  for (let i = 0; i < dateStr.length; i++) h = ((h << 5) + h + dateStr.charCodeAt(i)) | 0
+  return list[Math.abs(h) % list.length]
+}
+
 // Popular tactic themes offered in the trainer filter.
 export const THEMES = [
   { key: 'all', label: 'All tactics' },

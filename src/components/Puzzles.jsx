@@ -5,7 +5,7 @@ import MyMistakes from './MyMistakes'
 import PuzzleStats from './PuzzleStats'
 import { getMistakes } from '../lib/puzzles'
 
-export default function Puzzles({ username, initialPuzzleId }) {
+export default function Puzzles({ username, initialPuzzleId, initialTheme }) {
   const [tab, setTab] = useState('trainer')
   const mistakeCount = getMistakes(username).length
 
@@ -25,7 +25,7 @@ export default function Puzzles({ username, initialPuzzleId }) {
           Stats
         </button>
       </div>
-      {tab === 'trainer' && <PuzzleTrainer initialPuzzleId={initialPuzzleId} />}
+      {tab === 'trainer' && <PuzzleTrainer initialPuzzleId={initialPuzzleId} initialTheme={initialTheme} />}
       {tab === 'rush' && <PuzzleRush />}
       {tab === 'mistakes' && <MyMistakes username={username} />}
       {tab === 'stats' && <PuzzleStats />}

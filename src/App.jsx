@@ -3,6 +3,7 @@ import UsernameForm from './components/UsernameForm'
 import GameList from './components/GameList'
 import GameViewer from './components/GameViewer'
 import Puzzles from './components/Puzzles'
+import Landing from './components/Landing'
 import SavedGames from './components/SavedGames'
 import SettingsModal from './components/SettingsModal'
 import ImportModal from './components/ImportModal'
@@ -23,6 +24,7 @@ export default function App() {
   const [selectedGame, setSelectedGame] = useState(null)
   const [initialPly, setInitialPly] = useState(0)
   const [puzzleId, setPuzzleId] = useState(null)
+  const [puzzleTheme, setPuzzleTheme] = useState(null)
   const [loadingUser, setLoadingUser] = useState(false)
   const [loadingGames, setLoadingGames] = useState(false)
   const [error, setError] = useState(null)
@@ -120,7 +122,7 @@ export default function App() {
             <button className={view === 'review' ? 'is-active' : ''} onClick={() => setView('review')}>
               Review
             </button>
-            <button className={view === 'puzzles' ? 'is-active' : ''} onClick={() => setView('puzzles')}>
+            <button className={view === 'puzzles' ? 'is-active' : ''} onClick={() => { setPuzzleTheme(null); setView('puzzles') }}>
               Puzzles
             </button>
             <button className={view === 'saved' ? 'is-active' : ''} onClick={() => setView('saved')}>
@@ -155,12 +157,19 @@ export default function App() {
       {view === 'review' && importedGame && (
         <main className="app__imported">
           <div className="imported-bar">
-            <span className="muted">Imported game</span>
+            <span className="muted">{importedGame.title || 'Imported game'}</span>
             <button onClick={() => setShowImport(true)}>Import another</button>
             <button onClick={() => setImportedGame(null)}>✕ Clear</button>
           </div>
           <GameViewer game={importedGame} username="" />
         </main>
+      )}
+
+      {view === 'review' && !importedGame && archives.length === 0 && (
+        <Landing
+          onPlayGame={(g) => { setImportedGame(g); setView('review') }}
+          onOpenPuzzles={(theme) => { setPuzzleTheme(theme); setView('puzzles') }}
+        />
       )}
 
       {view === 'review' && !importedGame && archives.length > 0 && (
@@ -183,7 +192,7 @@ export default function App() {
         </main>
       )}
 
-      {view === 'puzzles' && <Puzzles username={username} initialPuzzleId={puzzleId} />}
+      {view === 'puzzles' && <Puzzles username={username} initialPuzzleId={puzzleId} initialTheme={puzzleTheme} />}
 
       {view === 'saved' && <SavedGames />}
 

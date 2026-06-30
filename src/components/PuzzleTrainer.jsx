@@ -5,6 +5,7 @@ import AchievementToast from './AchievementToast'
 import {
   loadPuzzles,
   pickPuzzle,
+  pickDailyPuzzle,
   getPuzzleRating,
   getSolvedCount,
   recordResult,
@@ -21,13 +22,14 @@ const DIFFICULTIES = [
   { key: 'hard', label: 'Hard', rating: 1900 },
 ]
 
-export default function PuzzleTrainer({ initialPuzzleId }) {
+export default function PuzzleTrainer({ initialPuzzleId, initialTheme }) {
   const boardRef = useRef(null)
   const [copied, setCopied] = useState(false)
   const [puzzles, setPuzzles] = useState(null)
   const [puzzle, setPuzzle] = useState(null)
   const [difficulty, setDifficulty] = useState('auto')
-  const [theme, setTheme] = useState('all')
+  const themeKnown = initialTheme && initialTheme !== 'daily' && THEMES.some((t) => t.key === initialTheme)
+  const [theme, setTheme] = useState(themeKnown ? initialTheme : 'all')
   const [rating, setRating] = useState(getPuzzleRating())
   const [solvedCount, setSolvedCount] = useState(getSolvedCount())
   const [feedback, setFeedback] = useState(null)
@@ -46,7 +48,8 @@ export default function PuzzleTrainer({ initialPuzzleId }) {
     loadPuzzles().then((p) => {
       setPuzzles(p)
       const shared = initialPuzzleId && p.find((x) => x.id === initialPuzzleId)
-      setPuzzle(shared || pickPuzzle(p, getPuzzleRating(), seen, 'all'))
+      const daily = initialTheme === 'daily' && pickDailyPuzzle(p)
+      setPuzzle(shared || daily || pickPuzzle(p, getPuzzleRating(), seen, themeKnown ? initialTheme : 'all'))
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
