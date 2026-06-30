@@ -16,16 +16,39 @@ export async function loadPuzzles() {
   return cache
 }
 
-/** Pick a random puzzle near `rating`, widening the window until one is found. */
-export function pickPuzzle(puzzles, rating, excludeIds = new Set()) {
+/**
+ * Pick a random puzzle near `rating`, optionally filtered to a tactic theme,
+ * widening the rating window until one is found.
+ */
+export function pickPuzzle(puzzles, rating, excludeIds = new Set(), theme = null) {
+  const matchesTheme = (p) => !theme || theme === 'all' || p.themes.split(' ').includes(theme)
   for (const window of [150, 300, 500, 9999]) {
     const pool = puzzles.filter(
-      (p) => Math.abs(p.rating - rating) <= window && !excludeIds.has(p.id),
+      (p) => matchesTheme(p) && Math.abs(p.rating - rating) <= window && !excludeIds.has(p.id),
     )
     if (pool.length) return pool[Math.floor(Math.random() * pool.length)]
   }
-  return null
+  const any = puzzles.filter(matchesTheme)
+  return any.length ? any[Math.floor(Math.random() * any.length)] : null
 }
+
+// Popular tactic themes offered in the trainer filter.
+export const THEMES = [
+  { key: 'all', label: 'All tactics' },
+  { key: 'mate', label: 'Checkmate' },
+  { key: 'mateIn1', label: 'Mate in 1' },
+  { key: 'mateIn2', label: 'Mate in 2' },
+  { key: 'fork', label: 'Fork' },
+  { key: 'pin', label: 'Pin' },
+  { key: 'skewer', label: 'Skewer' },
+  { key: 'sacrifice', label: 'Sacrifice' },
+  { key: 'discoveredAttack', label: 'Discovered attack' },
+  { key: 'hangingPiece', label: 'Hanging piece' },
+  { key: 'deflection', label: 'Deflection' },
+  { key: 'backRankMate', label: 'Back-rank mate' },
+  { key: 'endgame', label: 'Endgame' },
+  { key: 'promotion', label: 'Promotion' },
+]
 
 // ---- player puzzle rating (Elo-style) ----
 export function getPuzzleRating() {

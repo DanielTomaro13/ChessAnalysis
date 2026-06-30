@@ -1,6 +1,17 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import SolveBoard from './SolveBoard'
-import { loadPuzzles, pickPuzzle, getPuzzleRating, getSolvedCount, recordResult } from '../lib/puzzles'
+import RewardBar from './RewardBar'
+import AchievementToast from './AchievementToast'
+import {
+  loadPuzzles,
+  pickPuzzle,
+  getPuzzleRating,
+  getSolvedCount,
+  recordResult,
+  THEMES,
+} from '../lib/puzzles'
+import { getProgress, recordSolve } from '../lib/progress'
+import { playSound } from '../lib/sound'
 
 const DIFFICULTIES = [
   { key: 'auto', label: 'Your level' },
@@ -10,25 +21,29 @@ const DIFFICULTIES = [
 ]
 
 export default function PuzzleTrainer() {
+  const boardRef = useRef(null)
   const [puzzles, setPuzzles] = useState(null)
   const [puzzle, setPuzzle] = useState(null)
   const [difficulty, setDifficulty] = useState('auto')
+  const [theme, setTheme] = useState('all')
   const [rating, setRating] = useState(getPuzzleRating())
   const [solvedCount, setSolvedCount] = useState(getSolvedCount())
-  const [streak, setStreak] = useState(0)
-  const [feedback, setFeedback] = useState(null) // 'wrong' | 'solved' | 'partial'
+  const [feedback, setFeedback] = useState(null)
+  const [progress, setProgress] = useState(getProgress())
+  const [xpFlash, setXpFlash] = useState(null)
+  const [toasts, setToasts] = useState([])
   const [seen] = useState(() => new Set())
 
   const solution = useMemo(() => (puzzle ? puzzle.moves.split(' ') : []), [puzzle])
-  const orientation = useMemo(() => {
-    if (!puzzle) return 'white'
-    return puzzle.fen.split(' ')[1] === 'w' ? 'black' : 'white' // opponent moves first
-  }, [puzzle])
+  const orientation = useMemo(
+    () => (!puzzle ? 'white' : puzzle.fen.split(' ')[1] === 'w' ? 'black' : 'white'),
+    [puzzle],
+  )
 
   useEffect(() => {
     loadPuzzles().then((p) => {
       setPuzzles(p)
-      setPuzzle(pickPuzzle(p, targetRating('auto'), seen))
+      setPuzzle(pickPuzzle(p, getPuzzleRating(), seen, 'all'))
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -38,32 +53,27 @@ export default function PuzzleTrainer() {
     return DIFFICULTIES.find((d) => d.key === diff)?.rating ?? 1200
   }
 
-  function next(diff = difficulty) {
+  function next(diff = difficulty, th = theme) {
     setFeedback(null)
-    setPuzzle(pickPuzzle(puzzles, targetRating(diff), seen))
+    setPuzzle(pickPuzzle(puzzles, targetRating(diff), seen, th))
   }
 
   function handleSolved(clean) {
     if (feedback === 'solved' || feedback === 'partial') return
     seen.add(puzzle.id)
-    const newRating = recordResult(puzzle.rating, clean)
-    setRating(newRating)
+    setRating(recordResult(puzzle.rating, clean))
     setSolvedCount(getSolvedCount())
-    setStreak((s) => (clean ? s + 1 : 0))
+    const summary = recordSolve({ clean, rating: puzzle.rating, themes: puzzle.themes })
+    setProgress(getProgress())
+    setXpFlash(summary.xpGained)
+    setTimeout(() => setXpFlash(null), 1300)
+    if (summary.leveledUp) playSound('level')
+    if (summary.unlocked.length) setToasts((t) => [...t, ...summary.unlocked])
     setFeedback(clean ? 'solved' : 'partial')
   }
 
-  function handleWrong() {
-    if (!feedback) setFeedback('wrong')
-  }
-
-  function changeDifficulty(diff) {
-    setDifficulty(diff)
-    next(diff)
-  }
-
   if (!puzzles) return <div className="puzzle muted">Loading puzzles…</div>
-  if (!puzzle) return <div className="puzzle muted">No puzzle found.</div>
+  if (!puzzle) return <div className="puzzle muted">No puzzle for this filter.</div>
 
   const done = feedback === 'solved' || feedback === 'partial'
 
@@ -71,35 +81,46 @@ export default function PuzzleTrainer() {
     <div className="puzzle" data-puzzle-id={puzzle.id}>
       <div className="puzzle__main">
         <SolveBoard
+          ref={boardRef}
           key={puzzle.id}
           fen={puzzle.fen}
           solution={solution}
           autoFirst
           orientation={orientation}
           onSolved={handleSolved}
-          onWrong={handleWrong}
+          onWrong={() => !feedback && setFeedback('wrong')}
         />
       </div>
 
       <div className="puzzle__side">
+        <RewardBar progress={progress} flash={xpFlash} />
+
         <div className="puzzle__stats">
-          <div><span className="muted">Your rating</span><strong>{rating}</strong></div>
-          <div><span className="muted">Streak</span><strong>{streak}</strong></div>
+          <div><span className="muted">Puzzle rating</span><strong>{rating}</strong></div>
+          <div><span className="muted">Streak</span><strong>{progress.combo}</strong></div>
           <div><span className="muted">Solved</span><strong>{solvedCount}</strong></div>
         </div>
 
-        <label className="puzzle__difficulty">
-          Difficulty{' '}
-          <select value={difficulty} onChange={(e) => changeDifficulty(e.target.value)}>
-            {DIFFICULTIES.map((d) => (
-              <option key={d.key} value={d.key}>{d.label}</option>
-            ))}
-          </select>
-        </label>
-
-        <div className={`puzzle__turn ${done ? 'is-hidden' : ''}`}>
-          {!done && <>Find the best move for <strong>{orientation}</strong></>}
+        <div className="puzzle__filters">
+          <label>
+            Difficulty
+            <select value={difficulty} onChange={(e) => { setDifficulty(e.target.value); next(e.target.value, theme) }}>
+              {DIFFICULTIES.map((d) => <option key={d.key} value={d.key}>{d.label}</option>)}
+            </select>
+          </label>
+          <label>
+            Tactic
+            <select value={theme} onChange={(e) => { setTheme(e.target.value); next(difficulty, e.target.value) }}>
+              {THEMES.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
+            </select>
+          </label>
         </div>
+
+        {!done && (
+          <div className="puzzle__turn">
+            Find the best move for <strong>{orientation}</strong>
+          </div>
+        )}
 
         {feedback === 'wrong' && <p className="puzzle__fb fb--wrong">✗ Not the move — try again</p>}
         {feedback === 'solved' && <p className="puzzle__fb fb--ok">✓ Solved!</p>}
@@ -117,10 +138,20 @@ export default function PuzzleTrainer() {
           </div>
         )}
 
-        <button className="puzzle__next analyze__btn" onClick={() => next()}>
-          {done ? 'Next puzzle →' : 'Skip →'}
-        </button>
+        <div className="puzzle__actions">
+          {!done ? (
+            <>
+              <button onClick={() => boardRef.current?.hint()}>💡 Hint</button>
+              <button onClick={() => boardRef.current?.reveal()}>Show solution</button>
+              <button className="analyze__btn" onClick={() => next()}>Skip →</button>
+            </>
+          ) : (
+            <button className="analyze__btn puzzle__next" onClick={() => next()}>Next puzzle →</button>
+          )}
+        </div>
       </div>
+
+      <AchievementToast toasts={toasts} onClear={() => setToasts([])} />
     </div>
   )
 }

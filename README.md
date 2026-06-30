@@ -37,23 +37,18 @@ generated from your own games.
 
 ## Roadmap
 
-Planned next (Phase 4 — "more game, more polish"):
-
-- [ ] **Click-to-move** on the puzzle and review boards: click a piece to
-      highlight it and show its legal-move dots, then click a target to move.
-- [ ] Move **Hint** / **Show solution** into the right-hand puzzle panel.
-- [ ] **Sounds** for moves, captures, checks, and puzzle solve/fail — in both
-      Review and Puzzles.
-- [ ] **Tactic-theme filters** (fork, pin, mate-in-2, endgame, sacrifice, …)
-      built from the puzzles' theme tags, with per-theme accuracy tracking.
-- [ ] A more **game-like, reward-focused** loop: streak bonuses, daily goals,
-      XP / levels, combos, and achievements.
-
 Done:
 
 - [x] **Phase 1 — Game viewer**
 - [x] **Phase 2 — Engine review** (eval, accuracy, move classification, graph)
 - [x] **Phase 3 — Puzzles** (Lichess trainer + "my mistakes")
+- [x] **Phase 4 — Game feel**: click-to-move with legal-move highlights,
+      in-panel hint / show-solution, move/capture/check/solve sounds (with a
+      mute toggle), tactic-theme filters, and a reward loop — XP, levels,
+      streak combos, a daily goal, and achievements.
+
+Ideas for later: per-theme accuracy breakdown, saved puzzle history, opening
+explorer, clock/time-per-move from the PGN, and a PWA/offline mode.
 
 ## Tech
 

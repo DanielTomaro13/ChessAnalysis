@@ -85,8 +85,54 @@ body {
 .fb--ok { color: var(--accent); }
 .fb--partial { color: var(--draw); }
 .puzzle__solved-info p { margin: 0.2rem 0; font-size: 0.85rem; }
-.puzzle__actions { display: flex; gap: 0.5rem; }
-.puzzle__next, .puzzle__actions .analyze__btn { flex: 1; }
+.puzzle__actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.puzzle__actions button { flex: 1; min-width: 90px; }
+.puzzle__next { flex: 1; }
+.puzzle__filters { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.puzzle__filters label { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.75rem; color: var(--muted); }
+.puzzle__filters select {
+  background: var(--panel-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px; padding: 0.35rem;
+}
+
+/* mute button */
+.app__mute { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 0.45rem 0.6rem; }
+
+/* ---- rewards ---- */
+.reward {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 8px; padding: 0.55rem 0.6rem; display: flex; flex-direction: column; gap: 0.45rem;
+}
+.reward__row { display: flex; align-items: center; gap: 0.55rem; }
+.reward__level { font-weight: 800; color: var(--accent); white-space: nowrap; }
+.reward__xpbar {
+  position: relative; flex: 1; height: 12px; background: var(--panel-2);
+  border-radius: 7px; overflow: hidden;
+}
+.reward__xpfill { height: 100%; background: linear-gradient(90deg, var(--accent-dim), var(--accent)); transition: width 0.4s ease; }
+.reward__xpgain {
+  position: absolute; right: 6px; top: -2px; font-size: 0.7rem; font-weight: 800; color: #fff;
+  text-shadow: 0 1px 2px #000; animation: floatup 1.2s ease forwards;
+}
+@keyframes floatup { 0% { opacity: 0; transform: translateY(6px); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(-8px); } }
+.reward__combo { font-weight: 800; color: var(--draw); white-space: nowrap; }
+.reward__daily { display: flex; align-items: center; gap: 0.5rem; font-size: 0.72rem; }
+.reward__dailybar { flex: 1; height: 7px; background: var(--panel-2); border-radius: 5px; overflow: hidden; }
+.reward__dailyfill { height: 100%; transition: width 0.4s ease; }
+.reward__dailynum { font-variant-numeric: tabular-nums; color: var(--muted); }
+
+/* ---- achievement toasts ---- */
+.toasts { position: fixed; right: 1rem; bottom: 1rem; display: flex; flex-direction: column; gap: 0.5rem; z-index: 50; }
+.toast {
+  display: flex; align-items: center; gap: 0.6rem;
+  background: var(--panel-2); border: 1px solid var(--accent-dim);
+  border-radius: 10px; padding: 0.6rem 0.8rem; box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  animation: slidein 0.3s ease;
+}
+@keyframes slidein { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+.toast__icon { font-size: 1.6rem; }
+.toast__title { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.toast__label { font-weight: 700; }
 
 /* ---- username form ---- */
 .username-form { display: flex; gap: 0.5rem; flex-wrap: wrap; }

@@ -5,6 +5,7 @@ import { parsePgn, toMovePairs } from '../lib/pgn'
 import { analyzeGame, CLASS_META } from '../lib/analysis'
 import { loadOpenings } from '../lib/openings'
 import { addMistakes } from '../lib/puzzles'
+import { playSound, moveSoundKind } from '../lib/sound'
 import { fetchPlayerCard } from '../api/chessApi'
 import EvalBar from './EvalBar'
 import EvalGraph from './EvalGraph'
@@ -104,6 +105,12 @@ export default function GameViewer({ game, username }) {
     moveListRef.current
       ?.querySelector('.move.is-current')
       ?.scrollIntoView({ block: 'nearest' })
+  }, [ply])
+
+  // Play a sound for the move that produced the current position.
+  useEffect(() => {
+    if (ply > 0 && parsed?.moves[ply - 1]) playSound(moveSoundKind(parsed.moves[ply - 1]))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ply])
 
   async function handleAnalyze() {

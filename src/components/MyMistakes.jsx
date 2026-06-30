@@ -1,12 +1,20 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import SolveBoard from './SolveBoard'
+import RewardBar from './RewardBar'
+import AchievementToast from './AchievementToast'
 import { getMistakes, removeMistake } from '../lib/puzzles'
+import { getProgress, recordSolve } from '../lib/progress'
+import { playSound } from '../lib/sound'
 import { CLASS_META } from '../lib/analysis'
 
 export default function MyMistakes({ username }) {
+  const boardRef = useRef(null)
   const [mistakes, setMistakes] = useState([])
   const [idx, setIdx] = useState(0)
   const [feedback, setFeedback] = useState(null)
+  const [progress, setProgress] = useState(getProgress())
+  const [xpFlash, setXpFlash] = useState(null)
+  const [toasts, setToasts] = useState([])
 
   useEffect(() => {
     setMistakes(getMistakes(username))
@@ -46,6 +54,17 @@ export default function MyMistakes({ username }) {
     setFeedback(null)
   }
 
+  function handleSolved(clean) {
+    if (feedback === 'solved' || feedback === 'partial') return
+    const summary = recordSolve({ clean, rating: 1300, themes: current.class })
+    setProgress(getProgress())
+    setXpFlash(summary.xpGained)
+    setTimeout(() => setXpFlash(null), 1300)
+    if (summary.leveledUp) playSound('level')
+    if (summary.unlocked.length) setToasts((t) => [...t, ...summary.unlocked])
+    setFeedback(clean ? 'solved' : 'partial')
+  }
+
   const meta = CLASS_META[current.class]
   const done = feedback === 'solved' || feedback === 'partial'
 
@@ -53,17 +72,20 @@ export default function MyMistakes({ username }) {
     <div className="puzzle">
       <div className="puzzle__main">
         <SolveBoard
+          ref={boardRef}
           key={current.fen}
           fen={current.fen}
           solution={solution}
           autoFirst={false}
           orientation={current.sideWhite ? 'white' : 'black'}
-          onSolved={(clean) => !done && setFeedback(clean ? 'solved' : 'partial')}
+          onSolved={handleSolved}
           onWrong={() => !feedback && setFeedback('wrong')}
         />
       </div>
 
       <div className="puzzle__side">
+        <RewardBar progress={progress} flash={xpFlash} />
+
         <div className="puzzle__stats">
           <div><span className="muted">Mistake</span><strong>{idx + 1}/{mistakes.length}</strong></div>
           <div>
@@ -82,9 +104,11 @@ export default function MyMistakes({ username }) {
           )}
         </p>
 
-        <div className={`puzzle__turn ${done ? 'is-hidden' : ''}`}>
-          {!done && <>You went wrong here — find the best move for <strong>{current.sideWhite ? 'white' : 'black'}</strong></>}
-        </div>
+        {!done && (
+          <div className="puzzle__turn">
+            You went wrong here — find the best move for <strong>{current.sideWhite ? 'white' : 'black'}</strong>
+          </div>
+        )}
 
         {feedback === 'wrong' && <p className="puzzle__fb fb--wrong">✗ Try again</p>}
         {done && (
@@ -99,10 +123,18 @@ export default function MyMistakes({ username }) {
         )}
 
         <div className="puzzle__actions">
+          {!done && (
+            <>
+              <button onClick={() => boardRef.current?.hint()}>💡 Hint</button>
+              <button onClick={() => boardRef.current?.reveal()}>Show solution</button>
+            </>
+          )}
           <button className="analyze__btn" onClick={next}>Next →</button>
           <button onClick={drop}>Remove</button>
         </div>
       </div>
+
+      <AchievementToast toasts={toasts} onClear={() => setToasts([])} />
     </div>
   )
 }

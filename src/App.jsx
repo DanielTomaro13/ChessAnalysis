@@ -4,9 +4,11 @@ import GameList from './components/GameList'
 import GameViewer from './components/GameViewer'
 import Puzzles from './components/Puzzles'
 import { fetchArchives, fetchGamesForArchive } from './api/chessApi'
+import { isMuted, toggleMuted } from './lib/sound'
 
 export default function App() {
   const [view, setView] = useState('review')
+  const [muted, setMuted] = useState(isMuted())
   const [username, setUsername] = useState('')
   const [archives, setArchives] = useState([])
   const [selectedArchive, setSelectedArchive] = useState(null)
@@ -70,6 +72,13 @@ export default function App() {
             </button>
             <button className={view === 'puzzles' ? 'is-active' : ''} onClick={() => setView('puzzles')}>
               Puzzles
+            </button>
+            <button
+              className="app__mute"
+              title={muted ? 'Unmute sounds' : 'Mute sounds'}
+              onClick={() => setMuted(toggleMuted())}
+            >
+              {muted ? '🔇' : '🔊'}
             </button>
           </nav>
         </div>
