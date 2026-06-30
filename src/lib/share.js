@@ -5,19 +5,23 @@
 const baseUrl = () => `${location.origin}${location.pathname}`
 
 export function parseHash() {
-  const h = location.hash.replace(/^#/, '')
-  if (!h) return null
-  const parts = h.split('/')
-  if (parts[0] === 'g' && parts.length >= 5) {
-    return {
-      type: 'game',
-      user: decodeURIComponent(parts[1]),
-      month: parts[2],
-      gameUrl: decodeURIComponent(parts[3]),
-      ply: Number(parts[4]) || 0,
+  try {
+    const h = location.hash.replace(/^#/, '')
+    if (!h) return null
+    const parts = h.split('/')
+    if (parts[0] === 'g' && parts.length >= 5 && /^\d{4}-\d{2}$/.test(parts[2])) {
+      return {
+        type: 'game',
+        user: decodeURIComponent(parts[1]),
+        month: parts[2],
+        gameUrl: decodeURIComponent(parts[3]),
+        ply: Number(parts[4]) || 0,
+      }
     }
+    if (parts[0] === 'p' && parts[1]) return { type: 'puzzle', id: parts[1] }
+  } catch {
+    /* malformed hash */
   }
-  if (parts[0] === 'p' && parts[1]) return { type: 'puzzle', id: parts[1] }
   return null
 }
 

@@ -30,7 +30,7 @@ body {
   padding: 1.5rem;
 }
 
-.app__titlebar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.app__titlebar { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; flex-wrap: wrap; }
 .app__header h1 {
   margin: 0;
   font-size: 1.8rem;
@@ -38,7 +38,8 @@ body {
 .tagline { margin: 0.25rem 0 1rem; color: var(--muted); }
 
 /* top nav + sub-tabs */
-.app__nav, .subtabs { display: flex; gap: 0.4rem; }
+.app__nav, .subtabs { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+@media (max-width: 560px) { .app__header h1 { font-size: 1.4rem; } }
 .app__nav button, .subtabs button {
   background: var(--panel); border: 1px solid var(--border); color: var(--muted);
   padding: 0.45rem 0.9rem; border-radius: 8px; font-weight: 600;

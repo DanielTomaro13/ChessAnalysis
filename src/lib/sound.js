@@ -1,3 +1,4 @@
+import { lsSet } from './storage'
 // Tiny Web Audio sound kit — synthesized so there are no binary assets to ship
 // and it works offline. Sounds fire after user gestures (clicks/drags), so the
 // AudioContext is allowed to start.
@@ -20,7 +21,7 @@ export function isMuted() {
 }
 export function setMuted(m) {
   muted = m
-  localStorage.setItem('chessanalysis:muted', m ? '1' : '0')
+  lsSet('chessanalysis:muted', m ? '1' : '0')
 }
 export function toggleMuted() {
   setMuted(!muted)

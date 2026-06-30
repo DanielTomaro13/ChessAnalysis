@@ -14,6 +14,7 @@ export function winPercent(whiteCp) {
 
 export function formatEval({ whiteCp, mate }) {
   if (mate != null) return (mate > 0 ? '+M' : '−M') + Math.abs(mate)
+  if (Math.abs(whiteCp) >= 99000) return whiteCp > 0 ? '+#' : '−#' // delivered mate
   const pawns = whiteCp / 100
   return (pawns >= 0 ? '+' : '') + pawns.toFixed(1)
 }
@@ -80,6 +81,7 @@ function see(fen, square) {
 // at `fenAfter` can win >= ~2 pawns via a capture) — the signature of a sac.
 function offersSacrifice(fenAfter) {
   const board = new Chess(fenAfter)
+  if (board.isGameOver()) return false // a mating/terminal move isn't a "sac"
   const grabber = board.turn() // opponent of the player who just moved
   let best = 0
   for (const row of board.board()) {
@@ -179,7 +181,8 @@ function toWhite(cp, mate, sideWhite) {
 function terminalEval(fen, sideWhite) {
   const game = new Chess(fen)
   if (game.isCheckmate()) {
-    return { whiteCp: sideWhite ? -MATE_CP : MATE_CP, mate: sideWhite ? -0 : 0 }
+    // Side to move is mated; rely on the saturated cp (formatEval renders "#").
+    return { whiteCp: sideWhite ? -MATE_CP : MATE_CP, mate: null }
   }
   if (game.isStalemate() || game.isInsufficientMaterial() || game.isDraw()) {
     return { whiteCp: 0, mate: null }

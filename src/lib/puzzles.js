@@ -1,3 +1,4 @@
+import { lsSet } from './storage'
 // Puzzle data + progress, all client-side.
 // Lichess puzzle set is bundled in public/puzzles.json; "my mistakes" puzzles
 // are harvested from analyzed games and kept in localStorage.
@@ -22,7 +23,7 @@ export async function loadPuzzles() {
  * widening the rating window until one is found.
  */
 export function pickPuzzle(puzzles, rating, excludeIds = new Set(), theme = null) {
-  const matchesTheme = (p) => !theme || theme === 'all' || p.themes.split(' ').includes(theme)
+  const matchesTheme = (p) => !theme || theme === 'all' || (p.themes || '').split(' ').includes(theme)
   for (const window of [150, 300, 500, 9999]) {
     const pool = puzzles.filter(
       (p) => matchesTheme(p) && Math.abs(p.rating - rating) <= window && !excludeIds.has(p.id),
@@ -62,11 +63,11 @@ export function recordResult(puzzleRating, solvedClean) {
   const user = getPuzzleRating()
   const expected = 1 / (1 + 10 ** ((puzzleRating - user) / 400))
   const next = Math.max(400, Math.min(2900, Math.round(user + 32 * ((solvedClean ? 1 : 0) - expected))))
-  localStorage.setItem(LS.rating, String(next))
-  if (solvedClean) localStorage.setItem(LS.solved, String(getSolvedCount() + 1))
+  lsSet(LS.rating, String(next))
+  if (solvedClean) lsSet(LS.solved, String(getSolvedCount() + 1))
   const hist = getRatingHistory()
   hist.push(next)
-  localStorage.setItem(LS.history, JSON.stringify(hist.slice(-120)))
+  lsSet(LS.history, JSON.stringify(hist.slice(-120)))
   return next
 }
 
@@ -94,10 +95,10 @@ export function addMistakes(username, list) {
   const existing = getMistakes(username)
   const seen = new Set(existing.map((m) => m.fen))
   const merged = [...list.filter((m) => !seen.has(m.fen)), ...existing].slice(0, 300)
-  localStorage.setItem(LS.mistakes(username), JSON.stringify(merged))
+  lsSet(LS.mistakes(username), JSON.stringify(merged))
 }
 
 export function removeMistake(username, fen) {
   const next = getMistakes(username).filter((m) => m.fen !== fen)
-  localStorage.setItem(LS.mistakes(username), JSON.stringify(next))
+  lsSet(LS.mistakes(username), JSON.stringify(next))
 }

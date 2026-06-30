@@ -1,3 +1,4 @@
+import { lsSet } from './storage'
 // Lightweight settings store (localStorage) with a subscribe hook.
 import { useEffect, useState } from 'react'
 
@@ -28,7 +29,7 @@ export function getSettings() {
 }
 export function setSettings(patch) {
   current = { ...current, ...patch }
-  localStorage.setItem(KEY, JSON.stringify(current))
+  lsSet(KEY, JSON.stringify(current))
   listeners.forEach((l) => l(current))
 }
 export function boardColors(theme = current.boardTheme) {

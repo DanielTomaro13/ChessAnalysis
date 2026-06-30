@@ -1,3 +1,4 @@
+import { lsSet } from './storage'
 // Game-like progression: XP, levels, combo, a daily goal, theme stats, and
 // achievements. All client-side in localStorage.
 
@@ -84,11 +85,11 @@ export function getProgress() {
 export function recordSolve({ clean, rating = 1200, themes = '' }) {
   // combo
   const combo = clean ? num(K.combo) + 1 : 0
-  localStorage.setItem(K.combo, String(combo))
+  lsSet(K.combo, String(combo))
 
   // total
   const total = num(K.total) + 1
-  localStorage.setItem(K.total, String(total))
+  lsSet(K.total, String(total))
 
   // xp (difficulty + combo bonus)
   const base = clean ? 10 : 3
@@ -97,13 +98,13 @@ export function recordSolve({ clean, rating = 1200, themes = '' }) {
   const xpGained = Math.max(1, Math.round((base + diffBonus) * comboMult))
   const beforeLevel = levelFromXp(num(K.xp))
   const xp = num(K.xp) + xpGained
-  localStorage.setItem(K.xp, String(xp))
+  lsSet(K.xp, String(xp))
   const level = levelFromXp(xp)
 
   // daily
   const daily = getDaily()
   daily.count += 1
-  localStorage.setItem(K.daily, JSON.stringify(daily))
+  lsSet(K.daily, JSON.stringify(daily))
 
   // theme stats
   const stats = getThemeStats()
@@ -113,7 +114,7 @@ export function recordSolve({ clean, rating = 1200, themes = '' }) {
     if (clean) s.solved += 1
     stats[t] = s
   }
-  localStorage.setItem(K.themes, JSON.stringify(stats))
+  lsSet(K.themes, JSON.stringify(stats))
 
   // achievements
   const have = getAchievements()
@@ -125,7 +126,7 @@ export function recordSolve({ clean, rating = 1200, themes = '' }) {
       unlocked.push(a)
     }
   }
-  localStorage.setItem(K.achievements, JSON.stringify([...have]))
+  lsSet(K.achievements, JSON.stringify([...have]))
 
   return {
     xpGained,
