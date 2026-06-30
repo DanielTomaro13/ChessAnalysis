@@ -32,6 +32,27 @@ export async function fetchGamesForArchive(archiveUrl) {
   return data.games || []
 }
 
+/**
+ * Fetch the player's most recent games across several monthly archives, for
+ * aggregate insights. Newest-first, capped so we don't pull a whole career.
+ * @returns {Promise<object[]>} standard-chess games, newest first
+ */
+export async function fetchRecentGames(username, { maxMonths = 6, maxGames = 800, onProgress } = {}) {
+  const archives = await fetchArchives(username)
+  if (!archives.length) return []
+  const recent = archives.slice(-maxMonths).reverse() // newest month first
+  const games = []
+  for (let i = 0; i < recent.length; i++) {
+    const monthGames = await fetchGamesForArchive(recent[i])
+    games.push(...monthGames)
+    onProgress?.(i + 1, recent.length, games.length)
+    if (games.length >= maxGames) break
+  }
+  const standard = games.filter((g) => !g.rules || g.rules === 'chess')
+  standard.sort((a, b) => (b.end_time || 0) - (a.end_time || 0))
+  return standard.slice(0, maxGames)
+}
+
 /** Public profile (avatar, name, country, etc.). Returns null if unavailable. */
 export async function fetchProfile(username) {
   try {

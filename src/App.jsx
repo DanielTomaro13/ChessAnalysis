@@ -4,6 +4,8 @@ import GameList from './components/GameList'
 import GameViewer from './components/GameViewer'
 import Puzzles from './components/Puzzles'
 import Landing from './components/Landing'
+import Insights from './components/Insights'
+import PlayBot from './components/PlayBot'
 import SavedGames from './components/SavedGames'
 import SettingsModal from './components/SettingsModal'
 import ImportModal from './components/ImportModal'
@@ -135,6 +137,12 @@ export default function App() {
             <button className={view === 'review' ? 'is-active' : ''} onClick={() => setView('review')}>
               Review
             </button>
+            <button className={view === 'insights' ? 'is-active' : ''} onClick={() => setView('insights')}>
+              Insights
+            </button>
+            <button className={view === 'play' ? 'is-active' : ''} onClick={() => setView('play')}>
+              Play
+            </button>
             <button className={view === 'puzzles' ? 'is-active' : ''} onClick={() => { setPuzzleTheme(null); setView('puzzles') }}>
               Puzzles
             </button>
@@ -204,6 +212,12 @@ export default function App() {
           </section>
         </main>
       )}
+
+      {view === 'insights' && (
+        <Insights username={username || savedName} onGoReview={() => setView('review')} />
+      )}
+
+      {view === 'play' && <PlayBot />}
 
       {view === 'puzzles' && <Puzzles username={username} initialPuzzleId={puzzleId} initialTheme={puzzleTheme} />}
 
