@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import { Chessboard } from 'react-chessboard'
 import { Chess } from 'chess.js'
 import { playSound, moveSoundKind } from '../lib/sound'
+import { boardColors, useSettings } from '../lib/settings'
 
 const DOT = 'radial-gradient(circle, rgba(20,20,20,0.35) 22%, transparent 24%)'
 const RING = 'radial-gradient(circle, transparent 54%, rgba(197,82,74,0.55) 56%, transparent 70%)'
@@ -16,6 +17,7 @@ const SolveBoard = forwardRef(function SolveBoard(
   { fen, solution, autoFirst, orientation, onSolved, onWrong },
   ref,
 ) {
+  const settings = useSettings()
   const gameRef = useRef(null)
   const cleanRef = useRef(true)
   const timerRef = useRef(null)
@@ -180,6 +182,7 @@ const SolveBoard = forwardRef(function SolveBoard(
   if (hint) squareStyles[hint] = { background: SELECTED }
   Object.assign(squareStyles, flash || {})
 
+  const colors = boardColors(settings.boardTheme)
   return (
     <div className="solveboard">
       <div className="solveboard__board">
@@ -190,8 +193,8 @@ const SolveBoard = forwardRef(function SolveBoard(
           onPieceDrop={onDrop}
           onSquareClick={onSquareClick}
           customSquareStyles={squareStyles}
-          customDarkSquareStyle={{ backgroundColor: '#6f8d57' }}
-          customLightSquareStyle={{ backgroundColor: '#eeeed2' }}
+          customDarkSquareStyle={{ backgroundColor: colors.dark }}
+          customLightSquareStyle={{ backgroundColor: colors.light }}
         />
       </div>
     </div>

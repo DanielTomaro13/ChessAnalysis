@@ -15,25 +15,37 @@ generated from your own games.
 ## Features
 
 **Review**
-- Look up **any** chess.com player by username and browse their games by month.
-- Replay any game: board, move list, click-to-jump, keyboard navigation.
+- Look up **any** chess.com player by username and browse their games by month,
+  with result/color/type **filters**, opponent **search**, and a month W/D/L
+  summary.
+- Replay any game: board, move list, click-to-jump, keyboard navigation, sounds.
 - One-click **engine review** (single-threaded Stockfish, in a Web Worker):
   - Eval bar, best-move arrows, and a clickable eval graph.
   - chess.com-style move classification with on-board badges — **Book,
     Brilliant, Great, Best, Excellent, Good, Inaccuracy, Mistake, Miss,
     Blunder**.
+  - **Key moments** — jump straight to the turning points.
   - Per-side **accuracy %** (lichess volatility-weighted + harmonic model) and a
     rough **estimated rating** for the game.
   - Both players' **profile cards**: avatar, title, flag, and current
     Bullet/Blitz/Rapid ratings.
+  - Analysis is **cached in IndexedDB**, so reopening a game is instant.
 
 **Puzzles**
-- **Trainer**: 5,769 bundled Lichess puzzles, quality-filtered and spread across
-  rating bands 500–2800. Personal puzzle rating, streak, and difficulty
-  selection.
+- **Trainer**: 5,769 bundled Lichess puzzles, quality-filtered across rating
+  bands 500–2800. Click-to-move with legal-move hints, tactic-theme filter,
+  personal puzzle rating, streak, and difficulty selection.
+- **Rush**: a 3-minute race — solve as many as you can; three strikes ends it.
 - **My mistakes**: the mistakes and blunders found while reviewing *your own*
   games become "find the best move" puzzles, saved per username.
-- Progress (puzzle rating, streak, mistakes) is stored in `localStorage`.
+- **Stats**: level/XP, rating-history sparkline, per-tactic accuracy, and
+  achievements.
+- Rewards (XP, levels, streak combos, daily goal, achievements) and all progress
+  are stored in `localStorage`.
+
+**App**
+- Settings: board themes, default engine depth, sound on/off.
+- Sound effects, a mute toggle, installable PWA with a favicon/manifest.
 
 ## Roadmap
 
@@ -47,8 +59,13 @@ Done:
       mute toggle), tactic-theme filters, and a reward loop — XP, levels,
       streak combos, a daily goal, and achievements.
 
-Ideas for later: per-theme accuracy breakdown, saved puzzle history, opening
-explorer, clock/time-per-move from the PGN, and a PWA/offline mode.
+- [x] **Phase 5 — More tools**: game filters + month stats, key-moments jumps,
+      persistent (IndexedDB) analysis cache, settings + board themes, favicon /
+      PWA, Puzzle Rush, and a stats dashboard.
+
+Ideas for later: explore-variations from a position, opening explorer,
+clock/time-per-move from the PGN, shareable deep links, and a service-worker
+offline mode.
 
 ## Tech
 

@@ -3,12 +3,14 @@ import UsernameForm from './components/UsernameForm'
 import GameList from './components/GameList'
 import GameViewer from './components/GameViewer'
 import Puzzles from './components/Puzzles'
+import SettingsModal from './components/SettingsModal'
 import { fetchArchives, fetchGamesForArchive } from './api/chessApi'
 import { isMuted, toggleMuted } from './lib/sound'
 
 export default function App() {
   const [view, setView] = useState('review')
   const [muted, setMuted] = useState(isMuted())
+  const [showSettings, setShowSettings] = useState(false)
   const [username, setUsername] = useState('')
   const [archives, setArchives] = useState([])
   const [selectedArchive, setSelectedArchive] = useState(null)
@@ -80,6 +82,9 @@ export default function App() {
             >
               {muted ? '🔇' : '🔊'}
             </button>
+            <button className="app__mute" title="Settings" onClick={() => setShowSettings(true)}>
+              ⚙
+            </button>
           </nav>
         </div>
         {view === 'review' && (
@@ -114,6 +119,8 @@ export default function App() {
       )}
 
       {view === 'puzzles' && <Puzzles username={username} />}
+
+      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
 
       <footer className="app__footer muted">
         Game data from the public Chess.com API; puzzles from the open Lichess

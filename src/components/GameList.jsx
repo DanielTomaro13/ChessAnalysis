@@ -1,8 +1,8 @@
+import { useMemo, useState } from 'react'
 import { archiveLabel } from '../api/chessApi'
 
 const RESULT_LABEL = { win: 'Win', draw: 'Draw', loss: 'Loss' }
 
-// Map a chess.com side-result code to win / draw / loss.
 function outcomeFor(side) {
   if (side.result === 'win') return 'win'
   if (['agreed', 'repetition', 'stalemate', 'insufficient', '50move', 'timevsinsufficient'].includes(side.result))
@@ -36,28 +36,88 @@ export default function GameList({
   selectedGameUrl,
   loading,
 }) {
+  const [fResult, setFResult] = useState('all')
+  const [fColor, setFColor] = useState('all')
+  const [fClass, setFClass] = useState('all')
+  const [search, setSearch] = useState('')
+
+  const described = useMemo(
+    () => games.map((g) => ({ game: g, d: describeGame(g, username) })),
+    [games, username],
+  )
+
+  const stats = useMemo(() => {
+    const s = { win: 0, draw: 0, loss: 0 }
+    described.forEach(({ d }) => (s[d.outcome] += 1))
+    return s
+  }, [described])
+
+  const timeClasses = useMemo(
+    () => [...new Set(described.map(({ d }) => d.timeClass).filter(Boolean))],
+    [described],
+  )
+
+  const filtered = described.filter(({ d }) => {
+    if (fResult !== 'all' && d.outcome !== fResult) return false
+    if (fColor !== 'all' && d.color !== fColor) return false
+    if (fClass !== 'all' && d.timeClass !== fClass) return false
+    if (search && !d.opponent.toLowerCase().includes(search.toLowerCase())) return false
+    return true
+  })
+
   return (
     <div className="game-list">
       <div className="game-list__header">
         <label>
           Month{' '}
-          <select
-            value={selectedArchive || ''}
-            onChange={(e) => onSelectArchive(e.target.value)}
-          >
+          <select value={selectedArchive || ''} onChange={(e) => onSelectArchive(e.target.value)}>
             {[...archives].reverse().map((url) => (
-              <option key={url} value={url}>
-                {archiveLabel(url)}
-              </option>
+              <option key={url} value={url}>{archiveLabel(url)}</option>
             ))}
           </select>
         </label>
-        <span className="muted">{loading ? 'Loading…' : `${games.length} games`}</span>
+        <span className="muted">{loading ? 'Loading…' : `${filtered.length}/${games.length}`}</span>
+      </div>
+
+      {!loading && games.length > 0 && (
+        <div className="game-list__summary">
+          <span className="result--win">{stats.win}W</span>
+          <span className="result--draw">{stats.draw}D</span>
+          <span className="result--loss">{stats.loss}L</span>
+          <span className="muted">
+            {Math.round((stats.win / Math.max(1, games.length)) * 100)}% win
+          </span>
+        </div>
+      )}
+
+      <div className="game-list__filters">
+        <input
+          type="text"
+          placeholder="Search opponent…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <select value={fResult} onChange={(e) => setFResult(e.target.value)}>
+          <option value="all">Result</option>
+          <option value="win">Wins</option>
+          <option value="draw">Draws</option>
+          <option value="loss">Losses</option>
+        </select>
+        <select value={fColor} onChange={(e) => setFColor(e.target.value)}>
+          <option value="all">Color</option>
+          <option value="white">White</option>
+          <option value="black">Black</option>
+        </select>
+        {timeClasses.length > 1 && (
+          <select value={fClass} onChange={(e) => setFClass(e.target.value)}>
+            <option value="all">Type</option>
+            {timeClasses.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        )}
       </div>
 
       <ul className="game-list__items">
-        {games.map((game) => {
-          const d = describeGame(game, username)
+        {filtered.map(({ game, d }) => {
           const active = game.url === selectedGameUrl
           return (
             <li key={game.url}>
@@ -70,9 +130,7 @@ export default function GameList({
                   {d.opponent}
                   {d.opponentRating ? <em> ({d.opponentRating})</em> : null}
                 </span>
-                <span className={`game-row__result result--${d.outcome}`}>
-                  {RESULT_LABEL[d.outcome]}
-                </span>
+                <span className={`game-row__result result--${d.outcome}`}>{RESULT_LABEL[d.outcome]}</span>
                 <span className="game-row__meta">
                   {d.timeClass}
                   {d.date ? ` · ${d.date.toLocaleDateString()}` : ''}
@@ -81,8 +139,10 @@ export default function GameList({
             </li>
           )
         })}
-        {!loading && games.length === 0 && (
-          <li className="muted" style={{ padding: '1rem' }}>No games this month.</li>
+        {!loading && filtered.length === 0 && (
+          <li className="muted" style={{ padding: '1rem' }}>
+            {games.length ? 'No games match the filters.' : 'No games this month.'}
+          </li>
         )}
       </ul>
     </div>

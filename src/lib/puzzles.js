@@ -5,6 +5,7 @@
 const LS = {
   rating: 'chessanalysis:puzzleRating',
   solved: 'chessanalysis:puzzlesSolved',
+  history: 'chessanalysis:ratingHistory',
   mistakes: (u) => `chessanalysis:mistakes:${u.toLowerCase()}`,
 }
 
@@ -60,10 +61,21 @@ export function getSolvedCount() {
 export function recordResult(puzzleRating, solvedClean) {
   const user = getPuzzleRating()
   const expected = 1 / (1 + 10 ** ((puzzleRating - user) / 400))
-  const next = Math.round(user + 32 * ((solvedClean ? 1 : 0) - expected))
-  localStorage.setItem(LS.rating, String(Math.max(400, Math.min(2900, next))))
+  const next = Math.max(400, Math.min(2900, Math.round(user + 32 * ((solvedClean ? 1 : 0) - expected))))
+  localStorage.setItem(LS.rating, String(next))
   if (solvedClean) localStorage.setItem(LS.solved, String(getSolvedCount() + 1))
-  return getPuzzleRating()
+  const hist = getRatingHistory()
+  hist.push(next)
+  localStorage.setItem(LS.history, JSON.stringify(hist.slice(-120)))
+  return next
+}
+
+export function getRatingHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(LS.history) || '[]')
+  } catch {
+    return []
+  }
 }
 
 // ---- "my mistakes" store ----

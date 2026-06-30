@@ -1,0 +1,13 @@
+{
+  "name": "Chess Analysis",
+  "short_name": "ChessAnalysis",
+  "description": "Free chess.com game review and tactics trainer.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#16140f",
+  "theme_color": "#6f8d57",
+  "icons": [
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

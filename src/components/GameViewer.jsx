@@ -6,11 +6,14 @@ import { analyzeGame, CLASS_META } from '../lib/analysis'
 import { loadOpenings } from '../lib/openings'
 import { addMistakes } from '../lib/puzzles'
 import { playSound, moveSoundKind } from '../lib/sound'
+import { boardColors, getSettings, useSettings } from '../lib/settings'
+import { idbGet, idbSet } from '../lib/cache'
 import { fetchPlayerCard } from '../api/chessApi'
 import EvalBar from './EvalBar'
 import EvalGraph from './EvalGraph'
 import MoveBadge from './MoveBadge'
 import PlayerCards from './PlayerCards'
+import KeyMoments from './KeyMoments'
 
 const DEPTHS = [
   { label: 'Fast', value: 10 },
@@ -22,10 +25,11 @@ const DEPTHS = [
 const CHIP_KEYS = ['brilliant', 'great', 'inaccuracy', 'mistake', 'miss', 'blunder']
 
 export default function GameViewer({ game, username }) {
+  const settings = useSettings()
   const parsed = useMemo(() => (game ? parsePgn(game.pgn) : null), [game])
   const [ply, setPly] = useState(0)
   const [flipped, setFlipped] = useState(false)
-  const [depth, setDepth] = useState(13)
+  const [depth, setDepth] = useState(getSettings().depth)
   const [analysis, setAnalysis] = useState(null)
   const [analyzing, setAnalyzing] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -59,11 +63,23 @@ export default function GameViewer({ game, username }) {
     setProgress(0)
     abortRef.current?.abort()
     setAnalyzing(false)
-    if (game && username) {
-      setFlipped(game.black?.username?.toLowerCase() === username.toLowerCase())
-      setAnalysis(cacheRef.current.get(game.url) ?? null)
-    } else {
+    if (!game || !username) {
       setAnalysis(null)
+      return
+    }
+    setFlipped(game.black?.username?.toLowerCase() === username.toLowerCase())
+    const memo = cacheRef.current.get(game.url)
+    setAnalysis(memo ?? null)
+    if (memo) return
+    // Fall back to the persistent (IndexedDB) cache from a previous session.
+    let cancelled = false
+    idbGet(game.url).then((stored) => {
+      if (cancelled || !stored) return
+      cacheRef.current.set(game.url, stored)
+      setAnalysis(stored)
+    })
+    return () => {
+      cancelled = true
     }
   }, [game, username])
 
@@ -130,6 +146,7 @@ export default function GameViewer({ game, username }) {
       })
       if (!controller.signal.aborted) {
         cacheRef.current.set(game.url, result)
+        idbSet(game.url, result)
         setAnalysis(result)
         addMistakes(username, harvestMistakes(result, parsed, game, username))
       }
@@ -170,8 +187,8 @@ export default function GameViewer({ game, username }) {
               boardOrientation={flipped ? 'black' : 'white'}
               arePiecesDraggable={false}
               customArrows={arrows}
-              customDarkSquareStyle={{ backgroundColor: '#6f8d57' }}
-              customLightSquareStyle={{ backgroundColor: '#eeeed2' }}
+              customDarkSquareStyle={{ backgroundColor: boardColors(settings.boardTheme).dark }}
+              customLightSquareStyle={{ backgroundColor: boardColors(settings.boardTheme).light }}
             />
             {playedMove && (
               <MoveBadge
@@ -232,6 +249,14 @@ export default function GameViewer({ game, username }) {
           )}
           {engineError && <p className="error">{engineError}</p>}
           {analysis && <AccuracySummary analysis={analysis} />}
+          {analysis && (
+            <KeyMoments
+              annotations={analysis.annotations}
+              sans={sans}
+              currentPly={ply}
+              onJump={goTo}
+            />
+          )}
         </div>
 
         <ol className="moves" ref={moveListRef}>
