@@ -9,7 +9,7 @@ import PlayBot from './components/PlayBot'
 import SavedGames from './components/SavedGames'
 import SettingsModal from './components/SettingsModal'
 import ImportModal from './components/ImportModal'
-import { fetchArchives, fetchGamesForArchive } from './api/chessApi'
+import { fetchArchives, fetchGamesForArchive, fetchPlayerCard } from './api/chessApi'
 import { isMuted, toggleMuted } from './lib/sound'
 import { parseHash, archiveUrlFor } from './lib/share'
 import { lsSet } from './lib/storage'
@@ -17,12 +17,13 @@ import { lsSet } from './lib/storage'
 const USERNAME_KEY = 'chessanalysis:username'
 
 export default function App() {
-  const [view, setView] = useState('review')
+  const [view, setView] = useState('home')
   const [muted, setMuted] = useState(isMuted())
   const [showSettings, setShowSettings] = useState(false)
   const [showImport, setShowImport] = useState(false)
   const [importedGame, setImportedGame] = useState(null)
   const [username, setUsername] = useState('')
+  const [card, setCard] = useState(null)
   const [savedName] = useState(() => localStorage.getItem(USERNAME_KEY) || '')
   const [archives, setArchives] = useState([])
   const [selectedArchive, setSelectedArchive] = useState(null)
@@ -40,27 +41,25 @@ export default function App() {
     setSelectedGame(game)
   }
 
-  // Restore state from a shared deep link on first load, otherwise reload the
-  // last player this browser looked up so returning visitors skip re-entering.
+  // A shared deep link opens straight into that puzzle/game. Otherwise we always
+  // land on the Home page — but a remembered player is prefilled so Home greets
+  // them by name and their actions are one tap away (no auto-jump into games).
   useEffect(() => {
     const link = parseHash()
-    if (!link) {
-      const saved = localStorage.getItem(USERNAME_KEY)
-      if (saved) handleUsername(saved, { silent: true })
-      return
-    }
-    if (link.type === 'puzzle') {
+    if (link?.type === 'puzzle') {
       setPuzzleId(link.id)
       setView('puzzles')
       return
     }
-    if (link.type === 'game') {
+    if (link?.type === 'game') {
+      setView('review')
       ;(async () => {
         setLoadingUser(true)
         try {
           const list = await fetchArchives(link.user)
           setUsername(link.user)
           setArchives(list)
+          fetchPlayerCard(link.user).then(setCard).catch(() => {})
           const archiveUrl = archiveUrlFor(link.user, link.month)
           const g = await fetchGamesForArchive(archiveUrl)
           g.sort((a, b) => (b.end_time || 0) - (a.end_time || 0))
@@ -77,9 +76,41 @@ export default function App() {
           setLoadingUser(false)
         }
       })()
+      return
+    }
+    // No deep link: prefill the remembered player for a personalized Home,
+    // self-healing a name that no longer resolves.
+    const saved = localStorage.getItem(USERNAME_KEY)
+    if (saved) {
+      setUsername(saved)
+      fetchPlayerCard(saved)
+        .then((c) => {
+          if (c && c.exists) setCard(c)
+          else { setUsername(''); localStorage.removeItem(USERNAME_KEY) }
+        })
+        .catch(() => {})
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const goHome = () => setView('home')
+
+  // Open the Review tab, loading the remembered player's games on demand.
+  function openReview() {
+    setView('review')
+    if (username && archives.length === 0 && !loadingUser) handleUsername(username)
+  }
+
+  function changeUser() {
+    setUsername('')
+    setCard(null)
+    setArchives([])
+    setGames([])
+    setSelectedGame(null)
+    setSelectedArchive(null)
+    setError(null)
+    localStorage.removeItem(USERNAME_KEY)
+  }
 
   async function loadArchive(url) {
     setSelectedArchive(url)
@@ -110,6 +141,7 @@ export default function App() {
       setUsername(name)
       setArchives(list)
       lsSet(USERNAME_KEY, name) // remember for next visit
+      fetchPlayerCard(name).then(setCard).catch(() => {})
       if (list.length === 0) {
         setError(`"${name}" has no public games on chess.com.`)
         setSelectedArchive(null)
@@ -132,9 +164,12 @@ export default function App() {
     <div className="app">
       <header className="app__header">
         <div className="app__titlebar">
-          <h1>♟ Chess Analysis</h1>
+          <h1 className="app__title" onClick={goHome} title="Home">♟ Chess Analysis</h1>
           <nav className="app__nav">
-            <button className={view === 'review' ? 'is-active' : ''} onClick={() => setView('review')}>
+            <button className={'app__home ' + (view === 'home' ? 'is-active' : '')} onClick={goHome} title="Home">
+              🏠 <span className="app__home-label">Home</span>
+            </button>
+            <button className={view === 'review' ? 'is-active' : ''} onClick={openReview}>
               Review
             </button>
             <button className={view === 'insights' ? 'is-active' : ''} onClick={() => setView('insights')}>
@@ -161,36 +196,46 @@ export default function App() {
             </button>
           </nav>
         </div>
-        {view === 'review' && !importedGame && (
-          <>
-            <p className="tagline">
-              Review any chess.com player’s games — free, no premium account needed.
-            </p>
-            <div className="review-entry">
-              <UsernameForm onSubmit={handleUsername} loading={loadingUser} initialValue={savedName} />
-              <button className="import-btn" onClick={() => setShowImport(true)}>⬆ Import PGN</button>
-            </div>
-            {error && <p className="error">{error}</p>}
-          </>
-        )}
       </header>
+
+      {view === 'home' && (
+        <Landing
+          username={username}
+          card={card}
+          loading={loadingUser}
+          error={error}
+          onSubmitUsername={(n) => { handleUsername(n); setView('review') }}
+          onImport={() => setShowImport(true)}
+          onReviewGames={openReview}
+          onInsights={() => setView('insights')}
+          onPlay={() => setView('play')}
+          onChangeUser={changeUser}
+          onPlayGame={(g) => { setImportedGame(g); setView('review') }}
+          onOpenPuzzles={(theme) => { setPuzzleTheme(theme); setView('puzzles') }}
+        />
+      )}
 
       {view === 'review' && importedGame && (
         <main className="app__imported">
           <div className="imported-bar">
             <span className="muted">{importedGame.title || 'Imported game'}</span>
             <button onClick={() => setShowImport(true)}>Import another</button>
-            <button onClick={() => setImportedGame(null)}>✕ Clear</button>
+            <button onClick={() => { setImportedGame(null); goHome() }}>✕ Clear</button>
           </div>
           <GameViewer game={importedGame} username="" />
         </main>
       )}
 
       {view === 'review' && !importedGame && archives.length === 0 && (
-        <Landing
-          onPlayGame={(g) => { setImportedGame(g); setView('review') }}
-          onOpenPuzzles={(theme) => { setPuzzleTheme(theme); setView('puzzles') }}
-        />
+        <main className="review-entry-panel">
+          <p className="tagline">Review any chess.com player’s games — free, no premium account needed.</p>
+          <div className="review-entry">
+            <UsernameForm onSubmit={(n) => handleUsername(n)} loading={loadingUser} initialValue={username || savedName} />
+            <button className="import-btn" onClick={() => setShowImport(true)}>⬆ Import PGN</button>
+          </div>
+          {loadingUser && <p className="muted">Loading games…</p>}
+          {error && <p className="error">{error}</p>}
+        </main>
       )}
 
       {view === 'review' && !importedGame && archives.length > 0 && (
@@ -214,7 +259,7 @@ export default function App() {
       )}
 
       {view === 'insights' && (
-        <Insights username={username || savedName} onGoReview={() => setView('review')} />
+        <Insights username={username} card={card} onGoReview={openReview} />
       )}
 
       {view === 'play' && <PlayBot />}

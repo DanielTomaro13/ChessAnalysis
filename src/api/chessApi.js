@@ -88,6 +88,7 @@ export async function fetchPlayerCard(username) {
   const countryCode = profile?.country ? profile.country.split('/').pop() : null
   const card = {
     username,
+    exists: !!profile,
     name: profile?.name || null,
     title: profile?.title || null,
     avatar: profile?.avatar || null,

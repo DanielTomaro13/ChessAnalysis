@@ -3,6 +3,7 @@ import { fetchRecentGames, fetchPlayerCard } from '../api/chessApi'
 import { computeInsights } from '../lib/insights'
 import { getMistakes } from '../lib/puzzles'
 import Sparkline from './Sparkline'
+import RatingChips from './RatingChips'
 
 // Small win/loss/draw stacked bar.
 function WldBar({ rec }) {
@@ -32,9 +33,9 @@ function fmtDate(ms) {
   return new Date(ms).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
 }
 
-export default function Insights({ username, onGoReview }) {
+export default function Insights({ username, card: cardProp, onGoReview }) {
   const [data, setData] = useState(null)
-  const [card, setCard] = useState(null)
+  const [card, setCard] = useState(cardProp || null)
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState(null)
   const [error, setError] = useState(null)
@@ -51,7 +52,8 @@ export default function Insights({ username, onGoReview }) {
     setLoading(true)
     setError(null)
     setData(null)
-    fetchPlayerCard(username).then((c) => !cancelled && setCard(c)).catch(() => {})
+    if (cardProp && cardProp.username?.toLowerCase() === key) setCard(cardProp)
+    else fetchPlayerCard(username).then((c) => !cancelled && setCard(c)).catch(() => {})
     fetchRecentGames(username, {
       maxMonths: 6,
       maxGames: 800,
@@ -109,6 +111,7 @@ export default function Insights({ username, onGoReview }) {
               @{username} · {r.count} games
               {r.range ? ` · ${fmtDate(r.range.from)} – ${fmtDate(r.range.to)}` : ''}
             </p>
+            <RatingChips ratings={card?.ratings} className="insights__ratings" />
           </div>
         </div>
         <div className="insights__record">
