@@ -4,6 +4,7 @@ import GameList from './components/GameList'
 import GameViewer from './components/GameViewer'
 import Puzzles from './components/Puzzles'
 import SettingsModal from './components/SettingsModal'
+import ImportModal from './components/ImportModal'
 import { fetchArchives, fetchGamesForArchive } from './api/chessApi'
 import { isMuted, toggleMuted } from './lib/sound'
 import { parseHash, archiveUrlFor } from './lib/share'
@@ -12,6 +13,8 @@ export default function App() {
   const [view, setView] = useState('review')
   const [muted, setMuted] = useState(isMuted())
   const [showSettings, setShowSettings] = useState(false)
+  const [showImport, setShowImport] = useState(false)
+  const [importedGame, setImportedGame] = useState(null)
   const [username, setUsername] = useState('')
   const [archives, setArchives] = useState([])
   const [selectedArchive, setSelectedArchive] = useState(null)
@@ -131,18 +134,32 @@ export default function App() {
             </button>
           </nav>
         </div>
-        {view === 'review' && (
+        {view === 'review' && !importedGame && (
           <>
             <p className="tagline">
               Review any chess.com player’s games — free, no premium account needed.
             </p>
-            <UsernameForm onSubmit={handleUsername} loading={loadingUser} />
+            <div className="review-entry">
+              <UsernameForm onSubmit={handleUsername} loading={loadingUser} />
+              <button className="import-btn" onClick={() => setShowImport(true)}>⬆ Import PGN</button>
+            </div>
             {error && <p className="error">{error}</p>}
           </>
         )}
       </header>
 
-      {view === 'review' && archives.length > 0 && (
+      {view === 'review' && importedGame && (
+        <main className="app__imported">
+          <div className="imported-bar">
+            <span className="muted">Imported game</span>
+            <button onClick={() => setShowImport(true)}>Import another</button>
+            <button onClick={() => setImportedGame(null)}>✕ Clear</button>
+          </div>
+          <GameViewer game={importedGame} username="" />
+        </main>
+      )}
+
+      {view === 'review' && !importedGame && archives.length > 0 && (
         <main className="app__main">
           <aside className="app__sidebar">
             <GameList
@@ -165,6 +182,12 @@ export default function App() {
       {view === 'puzzles' && <Puzzles username={username} initialPuzzleId={puzzleId} />}
 
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+      {showImport && (
+        <ImportModal
+          onClose={() => setShowImport(false)}
+          onImport={(g) => { setImportedGame(g); setShowImport(false); setView('review') }}
+        />
+      )}
 
       <footer className="app__footer muted">
         Game data from the public Chess.com API; puzzles from the open Lichess

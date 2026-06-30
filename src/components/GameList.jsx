@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { archiveLabel } from '../api/chessApi'
+import RepertoireModal from './RepertoireModal'
 
 const RESULT_LABEL = { win: 'Win', draw: 'Draw', loss: 'Loss' }
 
@@ -40,6 +41,7 @@ export default function GameList({
   const [fColor, setFColor] = useState('all')
   const [fClass, setFClass] = useState('all')
   const [search, setSearch] = useState('')
+  const [showRep, setShowRep] = useState(false)
 
   const described = useMemo(
     () => games.map((g) => ({ game: g, d: describeGame(g, username) })),
@@ -87,8 +89,11 @@ export default function GameList({
           <span className="muted">
             {Math.round((stats.win / Math.max(1, games.length)) * 100)}% win
           </span>
+          <button className="linklike game-list__rep" onClick={() => setShowRep(true)}>Openings</button>
         </div>
       )}
+
+      {showRep && <RepertoireModal games={games} username={username} onClose={() => setShowRep(false)} />}
 
       <div className="game-list__filters">
         <input

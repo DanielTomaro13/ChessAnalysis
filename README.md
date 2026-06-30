@@ -67,9 +67,12 @@ Done:
       continuations + opening names), clock / time-per-move from the PGN,
       shareable deep links (games at a ply, and puzzles), and a service-worker
       that makes the whole app installable and **offline-capable**.
+- [x] **Phase 7 — Bring your own game**: paste or upload any **PGN** to review
+      it with the full engine pipeline; an engine **multi-line** panel; an
+      **opening repertoire** breakdown (W/D/L per opening, by colour); and
+      **annotated PGN export** (NAGs + evals).
 
-Ideas for later: a fuller opening repertoire view, engine multi-line panel, and
-import of arbitrary PGNs.
+Ideas for later: a saved-games library and a head-to-head view.
 
 ## Tech
 

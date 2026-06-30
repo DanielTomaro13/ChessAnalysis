@@ -57,7 +57,7 @@ export class Engine {
     })
   }
 
-  async init() {
+  async init(multiPV = 2) {
     this.send('uci')
     await this.waitFor((l) => (l.startsWith('uciok') ? true : false))
     // NOTE: this Stockfish.js v10 build is hardwired to 1 thread / 16MB hash
@@ -67,7 +67,7 @@ export class Engine {
     // isready again (verified safe with this build).
     this.send('isready')
     await this.waitFor((l) => (l.startsWith('readyok') ? true : false))
-    this.send('setoption name MultiPV value 2')
+    this.send('setoption name MultiPV value ' + multiPV)
   }
 
   /**
@@ -95,6 +95,10 @@ export class Engine {
 
     const l1 = byMpv[1]
     const l2 = byMpv[2]
+    const lines = Object.keys(byMpv)
+      .map(Number)
+      .sort((a, b) => a - b)
+      .map((i) => ({ scoreCp: byMpv[i].mate == null ? byMpv[i].cp : null, mate: byMpv[i].mate ?? null, pv: byMpv[i].pv }))
     return {
       scoreCp: l1?.mate == null ? (l1?.cp ?? 0) : null,
       mate: l1?.mate ?? null,
@@ -103,6 +107,7 @@ export class Engine {
       hasSecond: !!l2,
       bestMove: bestMove && bestMove !== '(none)' ? bestMove : null,
       pv: l1?.pv ?? [],
+      lines,
     }
   }
 

@@ -12,6 +12,7 @@ import { Engine } from '../lib/engine'
 import { fetchPlayerCard } from '../api/chessApi'
 import { openingName } from '../api/explorer'
 import { buildGameLink, copyLink } from '../lib/share'
+import { buildAnnotatedPgn, downloadPgn } from '../lib/exportPgn'
 import EvalBar from './EvalBar'
 import EvalGraph from './EvalGraph'
 import MoveBadge from './MoveBadge'
@@ -45,6 +46,8 @@ export default function GameViewer({ game, username, initialPly = 0 }) {
   const [variation, setVariation] = useState(null) // { startPly, sans[], fen }
   const [exploreEval, setExploreEval] = useState(null)
   const [showExplorer, setShowExplorer] = useState(false)
+  const [showLines, setShowLines] = useState(false)
+  const [liveLines, setLiveLines] = useState(null)
   const moveListRef = useRef(null)
   const boardRef = useRef(null)
   const cacheRef = useRef(new Map())
@@ -59,37 +62,60 @@ export default function GameViewer({ game, username, initialPly = 0 }) {
     setPly(Math.max(0, Math.min(total, p)))
   }
 
-  // Lazily spin up a dedicated engine for live "explore" evaluations.
+  // Lazily spin up a dedicated engine for live "explore"/lines evaluations.
   function exploreEngine() {
     if (!exploreEngineRef.current) {
       exploreEngineRef.current = (async () => {
         const e = new Engine()
-        await e.init()
+        await e.init(3) // MultiPV 3 for the lines panel
         return e
       })()
     }
     return exploreEngineRef.current
   }
 
+  function toWhitePov(scoreCp, mate, stm) {
+    if (mate != null) {
+      const m = stm === 'w' ? mate : -mate
+      return { whiteCp: (m > 0 ? 1 : -1) * 100000, mate: m }
+    }
+    return { whiteCp: stm === 'w' ? scoreCp : -scoreCp, mate: null }
+  }
+
+  function pvToSan(fen, pv, max = 8) {
+    const c = new Chess(fen)
+    const out = []
+    for (const u of (pv || []).slice(0, max)) {
+      const m = c.move({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] || 'q' })
+      if (!m) break
+      out.push(m.san)
+    }
+    return out
+  }
+
   async function evalPosition(fen) {
     const seq = ++evalSeqRef.current
     setExploreEval({ loading: true })
+    setLiveLines((l) => (l ? l : null))
     try {
       const e = await exploreEngine()
       const r = await e.analyze(fen, Math.min(depth, 14))
       if (seq !== evalSeqRef.current) return
       const stm = fen.split(' ')[1]
-      let whiteCp
-      let mate = null
-      if (r.mate != null) {
-        mate = stm === 'w' ? r.mate : -r.mate
-        whiteCp = (mate > 0 ? 1 : -1) * 100000
-      } else {
-        whiteCp = stm === 'w' ? r.scoreCp : -r.scoreCp
-      }
-      setExploreEval({ whiteCp, mate, bestMove: r.bestMove })
+      const top = toWhitePov(r.scoreCp, r.mate, stm)
+      setExploreEval({ whiteCp: top.whiteCp, mate: top.mate, bestMove: r.bestMove })
+      setLiveLines(
+        (r.lines || []).map((ln) => ({
+          ...toWhitePov(ln.scoreCp, ln.mate, stm),
+          sans: pvToSan(fen, ln.pv),
+          firstUci: ln.pv?.[0] || null,
+        })),
+      )
     } catch {
-      if (seq === evalSeqRef.current) setExploreEval(null)
+      if (seq === evalSeqRef.current) {
+        setExploreEval(null)
+        setLiveLines(null)
+      }
     }
   }
 
@@ -147,6 +173,8 @@ export default function GameViewer({ game, username, initialPly = 0 }) {
     setVariation(null)
     setExploreEval(null)
     setShowExplorer(false)
+    setShowLines(false)
+    setLiveLines(null)
     evalSeqRef.current++
     exploreEngineRef.current?.then((e) => e.quit())
     exploreEngineRef.current = null
@@ -182,7 +210,7 @@ export default function GameViewer({ game, username, initialPly = 0 }) {
 
   // Fetch both players' profiles (avatar, title, current ratings).
   useEffect(() => {
-    if (!game) return
+    if (!game || game.imported) return // imported PGNs have arbitrary names
     let cancelled = false
     const names = [game.white?.username, game.black?.username].filter(Boolean)
     Promise.all(names.map((n) => fetchPlayerCard(n))).then((results) => {
@@ -223,6 +251,15 @@ export default function GameViewer({ game, username, initialPly = 0 }) {
     if (ply > 0 && parsed?.moves[ply - 1]) playSound(moveSoundKind(parsed.moves[ply - 1]))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ply])
+
+  // Live engine lines for the current mainline position (the explore path
+  // drives its own eval when in a variation).
+  useEffect(() => {
+    if (!parsed || variation) return
+    if (showLines) evalPosition(parsed.fens[ply])
+    else setLiveLines(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ply, showLines, variation, game])
 
   async function handleAnalyze() {
     if (!parsed) return
@@ -314,7 +351,25 @@ export default function GameViewer({ game, username, initialPly = 0 }) {
           >
             ♟?
           </button>
+          <button
+            className={showLines ? 'is-active' : ''}
+            onClick={() => setShowLines((v) => !v)}
+            title="Engine lines"
+          >
+            ≡
+          </button>
         </div>
+
+        {(showLines || inVar) && liveLines && liveLines.length > 0 && (
+          <div className="lines">
+            {liveLines.map((ln, i) => (
+              <button key={i} className="lines__row" onClick={() => ln.firstUci && playExplore(ln.firstUci)}>
+                <span className="lines__eval">{formatEval(ln)}</span>
+                <span className="lines__pv">{ln.sans.join(' ')}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {inVar && (
           <div className="varbar">
@@ -344,7 +399,7 @@ export default function GameViewer({ game, username, initialPly = 0 }) {
         <p className="viewer__sub muted">
           {headers.Result} · {headers.ECO ? `${headers.ECO} ` : ''}
           {headers.TimeControl ? `· ${headers.TimeControl}` : ''}
-          {game.url && (
+          {!game.imported && game.url && (
             <>
               {' · '}
               <a className="viewer__link" href={game.url} target="_blank" rel="noreferrer">
@@ -352,19 +407,23 @@ export default function GameViewer({ game, username, initialPly = 0 }) {
               </a>
             </>
           )}
-          {' · '}
-          <button
-            className="linklike"
-            onClick={async () => {
-              const ok = await copyLink(buildGameLink(username, game.end_time, game.url, ply))
-              if (ok) {
-                setCopied(true)
-                setTimeout(() => setCopied(false), 1500)
-              }
-            }}
-          >
-            {copied ? 'Link copied ✓' : 'Share ⧉'}
-          </button>
+          {!game.imported && username && (
+            <>
+              {' · '}
+              <button
+                className="linklike"
+                onClick={async () => {
+                  const ok = await copyLink(buildGameLink(username, game.end_time, game.url, ply))
+                  if (ok) {
+                    setCopied(true)
+                    setTimeout(() => setCopied(false), 1500)
+                  }
+                }}
+              >
+                {copied ? 'Link copied ✓' : 'Share ⧉'}
+              </button>
+            </>
+          )}
         </p>
 
         <div className="analyze">
@@ -395,6 +454,22 @@ export default function GameViewer({ game, username, initialPly = 0 }) {
               currentPly={ply}
               onJump={goTo}
             />
+          )}
+          {analysis && (
+            <div className="export-row">
+              <button onClick={() => downloadPgn(parsed, analysis)}>⬇ PGN</button>
+              <button
+                className="linklike"
+                onClick={async () => {
+                  if (await copyLink(buildAnnotatedPgn(parsed, analysis))) {
+                    setCopied(true)
+                    setTimeout(() => setCopied(false), 1500)
+                  }
+                }}
+              >
+                {copied ? 'Copied ✓' : 'Copy annotated PGN'}
+              </button>
+            </div>
           )}
         </div>
 

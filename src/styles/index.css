@@ -563,6 +563,53 @@ button:disabled { opacity: 0.5; cursor: default; }
 .explorer__freq { color: var(--muted); font-size: 0.8rem; text-align: right; }
 .explorer__op { font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+/* review entry: username form + import */
+.review-entry { display: flex; gap: 0.5rem; align-items: stretch; flex-wrap: wrap; }
+.review-entry .username-form { flex: 1; }
+.import-btn { background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 1rem; white-space: nowrap; }
+
+.app__imported { margin-top: 1rem; }
+.imported-bar { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.75rem; }
+.imported-bar button { font-size: 0.85rem; padding: 0.35rem 0.7rem; }
+
+/* import modal */
+.modal--wide { max-width: 560px; }
+.import__textarea {
+  width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border);
+  border-radius: 8px; padding: 0.6rem; font-family: ui-monospace, monospace; font-size: 0.85rem; resize: vertical;
+}
+.import__actions { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.import__file { cursor: pointer; border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem 0.9rem; background: var(--panel-2); }
+
+/* engine lines panel */
+.lines { margin-top: 0.6rem; display: flex; flex-direction: column; gap: 0.25rem; }
+.lines__row {
+  display: grid; grid-template-columns: 3.2rem 1fr; gap: 0.5rem; align-items: baseline; text-align: left;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 0.3rem 0.5rem;
+}
+.lines__row:hover { border-color: var(--accent-dim); }
+.lines__eval { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--accent); }
+.lines__pv { font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* export row */
+.export-row { display: flex; gap: 0.75rem; align-items: center; margin-top: 0.75rem; }
+.export-row button:first-child { font-size: 0.85rem; padding: 0.35rem 0.7rem; }
+
+/* repertoire modal */
+.game-list__rep { margin-left: auto; font-size: 0.8rem; }
+.rep { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+@media (max-width: 640px) { .rep { grid-template-columns: 1fr; } }
+.rep__col h3 { margin: 0 0 0.5rem; font-size: 0.95rem; }
+.rep__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+.rep__row { display: grid; grid-template-columns: 1fr 1.6rem 4rem 2.4rem; gap: 0.4rem; align-items: center; font-size: 0.82rem; }
+.rep__name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rep__count { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+.rep__bar { display: flex; height: 9px; border-radius: 3px; overflow: hidden; background: var(--panel-2); }
+.rep__w { background: var(--win); }
+.rep__d { background: var(--draw); }
+.rep__l { background: var(--loss); }
+.rep__pct { text-align: right; font-variant-numeric: tabular-nums; }
+
 .app__footer {
   margin-top: 2rem;
   padding-top: 1rem;
