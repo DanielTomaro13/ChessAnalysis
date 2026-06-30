@@ -10,6 +10,9 @@ import ImportModal from './components/ImportModal'
 import { fetchArchives, fetchGamesForArchive } from './api/chessApi'
 import { isMuted, toggleMuted } from './lib/sound'
 import { parseHash, archiveUrlFor } from './lib/share'
+import { lsSet } from './lib/storage'
+
+const USERNAME_KEY = 'chessanalysis:username'
 
 export default function App() {
   const [view, setView] = useState('review')
@@ -18,6 +21,7 @@ export default function App() {
   const [showImport, setShowImport] = useState(false)
   const [importedGame, setImportedGame] = useState(null)
   const [username, setUsername] = useState('')
+  const [savedName] = useState(() => localStorage.getItem(USERNAME_KEY) || '')
   const [archives, setArchives] = useState([])
   const [selectedArchive, setSelectedArchive] = useState(null)
   const [games, setGames] = useState([])
@@ -34,10 +38,15 @@ export default function App() {
     setSelectedGame(game)
   }
 
-  // Restore state from a shared deep link on first load.
+  // Restore state from a shared deep link on first load, otherwise reload the
+  // last player this browser looked up so returning visitors skip re-entering.
   useEffect(() => {
     const link = parseHash()
-    if (!link) return
+    if (!link) {
+      const saved = localStorage.getItem(USERNAME_KEY)
+      if (saved) handleUsername(saved, { silent: true })
+      return
+    }
     if (link.type === 'puzzle') {
       setPuzzleId(link.id)
       setView('puzzles')
@@ -88,7 +97,7 @@ export default function App() {
     }
   }
 
-  async function handleUsername(name) {
+  async function handleUsername(name, { silent = false } = {}) {
     setLoadingUser(true)
     setError(null)
     setGames([])
@@ -98,6 +107,7 @@ export default function App() {
       const list = await fetchArchives(name)
       setUsername(name)
       setArchives(list)
+      lsSet(USERNAME_KEY, name) // remember for next visit
       if (list.length === 0) {
         setError(`"${name}" has no public games on chess.com.`)
         setSelectedArchive(null)
@@ -105,9 +115,12 @@ export default function App() {
         await loadArchive(list[list.length - 1]) // most recent month
       }
     } catch (e) {
-      setError(e.message)
       setUsername('')
       setArchives([])
+      // A silent auto-load (saved username) shouldn't surface an error or keep
+      // a now-broken name around — just fall back to the landing page.
+      if (silent) localStorage.removeItem(USERNAME_KEY)
+      else setError(e.message)
     } finally {
       setLoadingUser(false)
     }
@@ -146,7 +159,7 @@ export default function App() {
               Review any chess.com player’s games — free, no premium account needed.
             </p>
             <div className="review-entry">
-              <UsernameForm onSubmit={handleUsername} loading={loadingUser} />
+              <UsernameForm onSubmit={handleUsername} loading={loadingUser} initialValue={savedName} />
               <button className="import-btn" onClick={() => setShowImport(true)}>⬆ Import PGN</button>
             </div>
             {error && <p className="error">{error}</p>}
@@ -205,8 +218,13 @@ export default function App() {
       )}
 
       <footer className="app__footer muted">
-        Game data from the public Chess.com API; puzzles from the open Lichess
-        database. Not affiliated with Chess.com or Lichess.
+        <p className="app__kofi">
+          Enjoying this? <a className="kofi-link" href="https://ko-fi.com/danieltomaro" target="_blank" rel="noopener noreferrer">☕ Buy me a coffee on Ko-fi</a>
+        </p>
+        <p>
+          Game data from the public Chess.com API; puzzles from the open Lichess
+          database. Not affiliated with Chess.com or Lichess.
+        </p>
       </footer>
     </div>
   )

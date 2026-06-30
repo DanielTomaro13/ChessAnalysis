@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
-export default function UsernameForm({ onSubmit, loading }) {
-  const [value, setValue] = useState('')
+export default function UsernameForm({ onSubmit, loading, initialValue = '' }) {
+  const [value, setValue] = useState(initialValue)
 
   function handleSubmit(e) {
     e.preventDefault()
