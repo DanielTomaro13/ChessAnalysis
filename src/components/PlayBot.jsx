@@ -24,7 +24,7 @@ function materialDiff(fen) {
   return score
 }
 
-export default function PlayBot() {
+export default function PlayBot({ onAnalyze }) {
   const settings = useSettings()
   const [bot, setBot] = useState(null)
   const [colorChoice, setColorChoice] = useState('white')
@@ -231,6 +231,22 @@ export default function PlayBot() {
     setThinking(false)
   }
 
+  // Hand the finished game to the engine review (same path as Import PGN).
+  function analyzeGame() {
+    const g = gameRef.current
+    if (!g.history().length) return
+    const resultStr = !result ? '*'
+      : result.kind === 'draw' ? '1/2-1/2'
+      : (humanColor === 'white') === (result.kind === 'win') ? '1-0' : '0-1'
+    g.header('Event', 'Play vs ' + bot.name)
+    g.header('Site', 'Chess Analysis')
+    g.header('White', humanColor === 'white' ? 'You' : bot.name)
+    g.header('Black', humanColor === 'white' ? bot.name : 'You')
+    g.header('Result', resultStr)
+    g.header(humanColor === 'white' ? 'BlackElo' : 'WhiteElo', String(bot.rating))
+    onAnalyze?.(g.pgn(), `You vs ${bot.name}`)
+  }
+
   // ---- setup screen ----
   if (status === 'setup') {
     return (
@@ -330,7 +346,10 @@ export default function PlayBot() {
               <button onClick={resign}>🏳 Resign</button>
             </>
           ) : (
-            <button className="analyze__btn" onClick={() => startGame(bot, colorChoice)}>↻ Rematch</button>
+            <>
+              <button className="analyze__btn" onClick={() => startGame(bot, colorChoice)}>↻ Rematch</button>
+              {onAnalyze && <button onClick={analyzeGame} disabled={!sans.length}>🔍 Analyze game</button>}
+            </>
           )}
           <button onClick={changeBot}>Change bot</button>
         </div>

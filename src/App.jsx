@@ -13,6 +13,7 @@ import { fetchArchives, fetchGamesForArchive, fetchPlayerCard } from './api/ches
 import { isMuted, toggleMuted } from './lib/sound'
 import { parseHash, archiveUrlFor } from './lib/share'
 import { lsSet } from './lib/storage'
+import { buildGameFromPgn } from './lib/importPgn'
 
 const USERNAME_KEY = 'chessanalysis:username'
 
@@ -262,7 +263,17 @@ export default function App() {
         <Insights username={username} card={card} onGoReview={openReview} />
       )}
 
-      {view === 'play' && <PlayBot />}
+      {view === 'play' && (
+        <PlayBot
+          onAnalyze={(pgn, title) => {
+            try {
+              const g = buildGameFromPgn(pgn)
+              setImportedGame({ ...g, title })
+              setView('review')
+            } catch { /* nothing to analyze */ }
+          }}
+        />
+      )}
 
       {view === 'puzzles' && <Puzzles username={username} initialPuzzleId={puzzleId} initialTheme={puzzleTheme} />}
 
