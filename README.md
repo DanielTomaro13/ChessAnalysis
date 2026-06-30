@@ -62,10 +62,14 @@ Done:
 - [x] **Phase 5 — More tools**: game filters + month stats, key-moments jumps,
       persistent (IndexedDB) analysis cache, settings + board themes, favicon /
       PWA, Puzzle Rush, and a stats dashboard.
+- [x] **Phase 6 — Explore & share**: drag pieces on the review board to branch
+      into engine-evaluated variations, an offline opening explorer (theory
+      continuations + opening names), clock / time-per-move from the PGN,
+      shareable deep links (games at a ply, and puzzles), and a service-worker
+      that makes the whole app installable and **offline-capable**.
 
-Ideas for later: explore-variations from a position, opening explorer,
-clock/time-per-move from the PGN, shareable deep links, and a service-worker
-offline mode.
+Ideas for later: a fuller opening repertoire view, engine multi-line panel, and
+import of arbitrary PGNs.
 
 ## Tech
 

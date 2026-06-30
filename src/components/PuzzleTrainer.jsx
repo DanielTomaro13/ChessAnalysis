@@ -12,6 +12,7 @@ import {
 } from '../lib/puzzles'
 import { getProgress, recordSolve } from '../lib/progress'
 import { playSound } from '../lib/sound'
+import { buildPuzzleLink, copyLink } from '../lib/share'
 
 const DIFFICULTIES = [
   { key: 'auto', label: 'Your level' },
@@ -20,8 +21,9 @@ const DIFFICULTIES = [
   { key: 'hard', label: 'Hard', rating: 1900 },
 ]
 
-export default function PuzzleTrainer() {
+export default function PuzzleTrainer({ initialPuzzleId }) {
   const boardRef = useRef(null)
+  const [copied, setCopied] = useState(false)
   const [puzzles, setPuzzles] = useState(null)
   const [puzzle, setPuzzle] = useState(null)
   const [difficulty, setDifficulty] = useState('auto')
@@ -43,7 +45,8 @@ export default function PuzzleTrainer() {
   useEffect(() => {
     loadPuzzles().then((p) => {
       setPuzzles(p)
-      setPuzzle(pickPuzzle(p, getPuzzleRating(), seen, 'all'))
+      const shared = initialPuzzleId && p.find((x) => x.id === initialPuzzleId)
+      setPuzzle(shared || pickPuzzle(p, getPuzzleRating(), seen, 'all'))
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -135,6 +138,18 @@ export default function PuzzleTrainer() {
             <a href={`https://lichess.org/training/${puzzle.id}`} target="_blank" rel="noreferrer" className="viewer__link">
               View on Lichess ↗
             </a>
+            {' · '}
+            <button
+              className="linklike"
+              onClick={async () => {
+                if (await copyLink(buildPuzzleLink(puzzle.id))) {
+                  setCopied(true)
+                  setTimeout(() => setCopied(false), 1500)
+                }
+              }}
+            >
+              {copied ? 'Link copied ✓' : 'Share ⧉'}
+            </button>
           </div>
         )}
 

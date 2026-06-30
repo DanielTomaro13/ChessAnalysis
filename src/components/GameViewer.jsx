@@ -1,19 +1,24 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Chessboard } from 'react-chessboard'
 import { Chess } from 'chess.js'
-import { parsePgn, toMovePairs } from '../lib/pgn'
-import { analyzeGame, CLASS_META } from '../lib/analysis'
+import { parsePgn, toMovePairs, parseTimeControl } from '../lib/pgn'
+import { analyzeGame, CLASS_META, formatEval } from '../lib/analysis'
 import { loadOpenings } from '../lib/openings'
 import { addMistakes } from '../lib/puzzles'
 import { playSound, moveSoundKind } from '../lib/sound'
 import { boardColors, getSettings, useSettings } from '../lib/settings'
 import { idbGet, idbSet } from '../lib/cache'
+import { Engine } from '../lib/engine'
 import { fetchPlayerCard } from '../api/chessApi'
+import { openingName } from '../api/explorer'
+import { buildGameLink, copyLink } from '../lib/share'
 import EvalBar from './EvalBar'
 import EvalGraph from './EvalGraph'
 import MoveBadge from './MoveBadge'
 import PlayerCards from './PlayerCards'
 import KeyMoments from './KeyMoments'
+import Clocks from './Clocks'
+import ExplorePanel from './ExplorePanel'
 
 const DEPTHS = [
   { label: 'Fast', value: 10 },
@@ -24,10 +29,11 @@ const DEPTHS = [
 // chips shown in the accuracy summary (skip the unremarkable categories)
 const CHIP_KEYS = ['brilliant', 'great', 'inaccuracy', 'mistake', 'miss', 'blunder']
 
-export default function GameViewer({ game, username }) {
+export default function GameViewer({ game, username, initialPly = 0 }) {
   const settings = useSettings()
   const parsed = useMemo(() => (game ? parsePgn(game.pgn) : null), [game])
-  const [ply, setPly] = useState(0)
+  const [ply, setPly] = useState(initialPly)
+  const [copied, setCopied] = useState(false)
   const [flipped, setFlipped] = useState(false)
   const [depth, setDepth] = useState(getSettings().depth)
   const [analysis, setAnalysis] = useState(null)
@@ -36,13 +42,90 @@ export default function GameViewer({ game, username }) {
   const [engineError, setEngineError] = useState(null)
   const [boardWidth, setBoardWidth] = useState(0)
   const [cards, setCards] = useState({})
+  const [variation, setVariation] = useState(null) // { startPly, sans[], fen }
+  const [exploreEval, setExploreEval] = useState(null)
+  const [showExplorer, setShowExplorer] = useState(false)
   const moveListRef = useRef(null)
   const boardRef = useRef(null)
   const cacheRef = useRef(new Map())
   const abortRef = useRef(null)
+  const exploreEngineRef = useRef(null)
+  const evalSeqRef = useRef(0)
 
   const total = parsed ? parsed.fens.length - 1 : 0
-  const goTo = (p) => setPly(Math.max(0, Math.min(total, p)))
+  const goTo = (p) => {
+    setVariation(null)
+    setExploreEval(null)
+    setPly(Math.max(0, Math.min(total, p)))
+  }
+
+  // Lazily spin up a dedicated engine for live "explore" evaluations.
+  function exploreEngine() {
+    if (!exploreEngineRef.current) {
+      exploreEngineRef.current = (async () => {
+        const e = new Engine()
+        await e.init()
+        return e
+      })()
+    }
+    return exploreEngineRef.current
+  }
+
+  async function evalPosition(fen) {
+    const seq = ++evalSeqRef.current
+    setExploreEval({ loading: true })
+    try {
+      const e = await exploreEngine()
+      const r = await e.analyze(fen, Math.min(depth, 14))
+      if (seq !== evalSeqRef.current) return
+      const stm = fen.split(' ')[1]
+      let whiteCp
+      let mate = null
+      if (r.mate != null) {
+        mate = stm === 'w' ? r.mate : -r.mate
+        whiteCp = (mate > 0 ? 1 : -1) * 100000
+      } else {
+        whiteCp = stm === 'w' ? r.scoreCp : -r.scoreCp
+      }
+      setExploreEval({ whiteCp, mate, bestMove: r.bestMove })
+    } catch {
+      if (seq === evalSeqRef.current) setExploreEval(null)
+    }
+  }
+
+  // Make (or extend) an exploration line from the current position.
+  function playExplore(uci) {
+    const baseFen = variation ? variation.fen : parsed.fens[ply]
+    const c = new Chess(baseFen)
+    let move
+    try {
+      move = c.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] || 'q' })
+    } catch {
+      move = null
+    }
+    if (!move) return false
+    const sans = variation ? [...variation.sans, move.san] : [move.san]
+    const next = { startPly: variation ? variation.startPly : ply, sans, fen: c.fen() }
+    setVariation(next)
+    playSound(moveSoundKind(move))
+    evalPosition(next.fen)
+    return true
+  }
+
+  function undoExplore() {
+    if (!variation) return
+    const sans = variation.sans.slice(0, -1)
+    if (!sans.length) {
+      setVariation(null)
+      setExploreEval(null)
+      return
+    }
+    const c = new Chess(parsed.fens[variation.startPly])
+    sans.forEach((s) => c.move(s))
+    const next = { ...variation, sans, fen: c.fen() }
+    setVariation(next)
+    evalPosition(next.fen)
+  }
 
   // Measure the board so the badge overlay lines up with the squares.
   // Depends on `game` because the board element only exists once a game is
@@ -58,9 +141,15 @@ export default function GameViewer({ game, username }) {
   }, [game])
 
   useEffect(() => {
-    setPly(0)
+    setPly(initialPly || 0)
     setEngineError(null)
     setProgress(0)
+    setVariation(null)
+    setExploreEval(null)
+    setShowExplorer(false)
+    evalSeqRef.current++
+    exploreEngineRef.current?.then((e) => e.quit())
+    exploreEngineRef.current = null
     abortRef.current?.abort()
     setAnalyzing(false)
     if (!game || !username) {
@@ -83,7 +172,13 @@ export default function GameViewer({ game, username }) {
     }
   }, [game, username])
 
-  useEffect(() => () => abortRef.current?.abort(), [])
+  useEffect(
+    () => () => {
+      abortRef.current?.abort()
+      exploreEngineRef.current?.then((e) => e.quit())
+    },
+    [],
+  )
 
   // Fetch both players' profiles (avatar, title, current ratings).
   useEffect(() => {
@@ -164,39 +259,43 @@ export default function GameViewer({ game, username }) {
     return <div className="viewer viewer--empty muted">Couldn’t read this game’s moves.</div>
   }
 
-  const { headers, sans, fens, moves } = parsed
+  const { headers, sans, fens, moves, clocks } = parsed
   const pairs = toMovePairs(sans)
-  const currentEval = analysis ? analysis.evals[ply] : null
-  const bestMove = currentEval?.bestMove
-  const arrows = bestMove
-    ? [[bestMove.slice(0, 2), bestMove.slice(2, 4), 'rgba(127,166,80,0.85)']]
+  const tc = parseTimeControl(headers.TimeControl)
+  const inVar = !!variation
+  const boardFen = inVar ? variation.fen : fens[ply]
+  const shownEval = inVar ? (exploreEval?.loading ? null : exploreEval) : analysis ? analysis.evals[ply] : null
+  const arrowMove = inVar ? exploreEval?.bestMove : analysis?.evals[ply]?.bestMove
+  const arrows = arrowMove
+    ? [[arrowMove.slice(0, 2), arrowMove.slice(2, 4), 'rgba(127,166,80,0.85)']]
     : []
 
-  // Badge for the move that produced the current position.
-  const playedMove = ply > 0 ? moves[ply - 1] : null
+  // Badge for the move that produced the current position (mainline only).
+  const playedMove = !inVar && ply > 0 ? moves[ply - 1] : null
   const playedClass = analysis && ply > 0 ? analysis.annotations[ply - 1]?.class : null
+
+  function onBoardDrop(from, to, piece) {
+    const promo = piece && piece[1]?.toLowerCase() === 'p' && (to[1] === '8' || to[1] === '1') ? 'q' : ''
+    return playExplore(from + to + promo)
+  }
 
   return (
     <div className="viewer">
       <div className="viewer__board">
         <div className="board-row">
-          <EvalBar evalObj={currentEval} flipped={flipped} />
+          <EvalBar evalObj={shownEval} flipped={flipped} />
           <div className="board-row__board" ref={boardRef}>
             <Chessboard
-              position={fens[ply]}
+              position={boardFen}
               boardOrientation={flipped ? 'black' : 'white'}
-              arePiecesDraggable={false}
+              arePiecesDraggable
+              onPieceDrop={onBoardDrop}
               customArrows={arrows}
               customDarkSquareStyle={{ backgroundColor: boardColors(settings.boardTheme).dark }}
               customLightSquareStyle={{ backgroundColor: boardColors(settings.boardTheme).light }}
             />
             {playedMove && (
-              <MoveBadge
-                square={playedMove.to}
-                boardWidth={boardWidth}
-                flipped={flipped}
-                klass={playedClass}
-              />
+              <MoveBadge square={playedMove.to} boardWidth={boardWidth} flipped={flipped} klass={playedClass} />
             )}
           </div>
         </div>
@@ -208,13 +307,40 @@ export default function GameViewer({ game, username }) {
           <button onClick={() => goTo(ply + 1)} title="Next (→)">▶</button>
           <button onClick={() => goTo(total)} title="End (↓)">⏭</button>
           <button onClick={() => setFlipped((f) => !f)} title="Flip (f)">⟲</button>
+          <button
+            className={showExplorer ? 'is-active' : ''}
+            onClick={() => setShowExplorer((v) => !v)}
+            title="Opening explorer"
+          >
+            ♟?
+          </button>
         </div>
+
+        {inVar && (
+          <div className="varbar">
+            <span className="varbar__label">Exploring</span>
+            <span className="varbar__line">
+              {variation.sans.join(' ')}
+              {exploreEval && !exploreEval.loading && (
+                <em className="varbar__eval"> ({formatEval(exploreEval)})</em>
+              )}
+              {exploreEval?.loading && <em className="muted"> …</em>}
+            </span>
+            <button onClick={undoExplore}>↶</button>
+            <button onClick={() => { setVariation(null); setExploreEval(null) }}>Return</button>
+          </div>
+        )}
+
+        <Clocks clocks={clocks} tc={tc} ply={inVar ? variation.startPly : ply} flipped={flipped} />
+
+        {showExplorer && <ExplorePanel fen={boardFen} onPlay={playExplore} />}
 
         {analysis && <EvalGraph evals={analysis.evals} ply={ply} onSeek={goTo} />}
       </div>
 
       <div className="viewer__sidebar">
         <PlayerCards game={game} cards={cards} />
+        {openingName(headers) && <p className="viewer__opening">📖 {openingName(headers)}</p>}
         <p className="viewer__sub muted">
           {headers.Result} · {headers.ECO ? `${headers.ECO} ` : ''}
           {headers.TimeControl ? `· ${headers.TimeControl}` : ''}
@@ -226,6 +352,19 @@ export default function GameViewer({ game, username }) {
               </a>
             </>
           )}
+          {' · '}
+          <button
+            className="linklike"
+            onClick={async () => {
+              const ok = await copyLink(buildGameLink(username, game.end_time, game.url, ply))
+              if (ok) {
+                setCopied(true)
+                setTimeout(() => setCopied(false), 1500)
+              }
+            }}
+          >
+            {copied ? 'Link copied ✓' : 'Share ⧉'}
+          </button>
         </p>
 
         <div className="analyze">

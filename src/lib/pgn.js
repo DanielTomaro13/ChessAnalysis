@@ -28,7 +28,27 @@ export function parsePgn(pgn) {
     fens.push(replay.fen())
   }
 
-  return { headers: game.header(), sans, fens, moves: verbose }
+  return { headers: game.header(), sans, fens, moves: verbose, clocks: parseClocks(pgn) }
+}
+
+// Pull the per-move clock readings ([%clk H:MM:SS]) from a chess.com PGN.
+// Returns remaining seconds after each ply (empty if the PGN has no clocks).
+export function parseClocks(pgn) {
+  const re = /%clk\s+(\d+):(\d+):(\d+(?:\.\d+)?)/g
+  const out = []
+  let m
+  while ((m = re.exec(pgn))) {
+    out.push(Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]))
+  }
+  return out
+}
+
+// "180+2" -> { base: 180, inc: 2 }. Returns null for odd/daily formats.
+export function parseTimeControl(tc) {
+  if (!tc) return null
+  const m = /^(\d+)(?:\+(\d+))?$/.exec(tc.trim())
+  if (!m) return null
+  return { base: Number(m[1]), inc: Number(m[2] || 0) }
 }
 
 /** "1. e4 e5 2. Nf3 ..." pairing for a move-list display. */

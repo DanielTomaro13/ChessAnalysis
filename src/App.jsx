@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import UsernameForm from './components/UsernameForm'
 import GameList from './components/GameList'
 import GameViewer from './components/GameViewer'
@@ -6,6 +6,7 @@ import Puzzles from './components/Puzzles'
 import SettingsModal from './components/SettingsModal'
 import { fetchArchives, fetchGamesForArchive } from './api/chessApi'
 import { isMuted, toggleMuted } from './lib/sound'
+import { parseHash, archiveUrlFor } from './lib/share'
 
 export default function App() {
   const [view, setView] = useState('review')
@@ -16,9 +17,52 @@ export default function App() {
   const [selectedArchive, setSelectedArchive] = useState(null)
   const [games, setGames] = useState([])
   const [selectedGame, setSelectedGame] = useState(null)
+  const [initialPly, setInitialPly] = useState(0)
+  const [puzzleId, setPuzzleId] = useState(null)
   const [loadingUser, setLoadingUser] = useState(false)
   const [loadingGames, setLoadingGames] = useState(false)
   const [error, setError] = useState(null)
+
+  function selectGame(game) {
+    setInitialPly(0)
+    setSelectedGame(game)
+  }
+
+  // Restore state from a shared deep link on first load.
+  useEffect(() => {
+    const link = parseHash()
+    if (!link) return
+    if (link.type === 'puzzle') {
+      setPuzzleId(link.id)
+      setView('puzzles')
+      return
+    }
+    if (link.type === 'game') {
+      ;(async () => {
+        setLoadingUser(true)
+        try {
+          const list = await fetchArchives(link.user)
+          setUsername(link.user)
+          setArchives(list)
+          const archiveUrl = archiveUrlFor(link.user, link.month)
+          const g = await fetchGamesForArchive(archiveUrl)
+          g.sort((a, b) => (b.end_time || 0) - (a.end_time || 0))
+          setSelectedArchive(archiveUrl)
+          setGames(g)
+          const target = g.find((x) => x.url === link.gameUrl)
+          if (target) {
+            setInitialPly(link.ply)
+            setSelectedGame(target)
+          }
+        } catch (e) {
+          setError(e.message)
+        } finally {
+          setLoadingUser(false)
+        }
+      })()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function loadArchive(url) {
     setSelectedArchive(url)
@@ -107,18 +151,18 @@ export default function App() {
               archives={archives}
               selectedArchive={selectedArchive}
               onSelectArchive={loadArchive}
-              onSelectGame={setSelectedGame}
+              onSelectGame={selectGame}
               selectedGameUrl={selectedGame?.url}
               loading={loadingGames}
             />
           </aside>
           <section className="app__viewer">
-            <GameViewer game={selectedGame} username={username} />
+            <GameViewer game={selectedGame} username={username} initialPly={initialPly} />
           </section>
         </main>
       )}
 
-      {view === 'puzzles' && <Puzzles username={username} />}
+      {view === 'puzzles' && <Puzzles username={username} initialPuzzleId={puzzleId} />}
 
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
 

@@ -519,6 +519,50 @@ button:disabled { opacity: 0.5; cursor: default; }
 .rush-hud__strikes .x { color: var(--border); font-weight: 800; }
 .rush-hud__strikes .x.used { color: var(--loss); }
 
+/* link-style button */
+.linklike {
+  background: none; border: none; padding: 0; color: var(--accent);
+  font: inherit; cursor: pointer; text-decoration: none;
+}
+.linklike:hover { text-decoration: underline; }
+
+.viewer__opening { margin: 0.35rem 0 0; font-size: 0.85rem; font-weight: 600; }
+
+/* clocks */
+.clocks {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+  margin-top: 0.5rem; font-size: 0.82rem; font-variant-numeric: tabular-nums;
+}
+.clocks__c { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 0.25rem 0.5rem; }
+.clocks__spent { font-size: 0.75rem; }
+
+/* variation bar */
+.varbar {
+  display: flex; align-items: center; gap: 0.5rem; margin-top: 0.6rem;
+  background: var(--panel-2); border: 1px solid var(--accent-dim); border-radius: 8px; padding: 0.4rem 0.6rem;
+}
+.varbar__label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent); font-weight: 700; }
+.varbar__line { flex: 1; min-width: 0; font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.varbar__eval { color: var(--muted); font-style: normal; }
+.varbar button { padding: 0.25rem 0.5rem; font-size: 0.8rem; }
+
+/* opening explorer */
+.explorer { margin-top: 0.6rem; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem; }
+.explorer__head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; margin-bottom: 0.4rem; }
+.explorer__name { font-weight: 600; font-size: 0.85rem; text-align: right; }
+.explorer__empty { margin: 0.25rem 0; font-size: 0.85rem; }
+.explorer__moves { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.2rem; }
+.explorer__move {
+  width: 100%; display: grid; grid-template-columns: 3rem 4rem 2.2rem 1fr; align-items: center; gap: 0.5rem;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.3rem 0.5rem; text-align: left;
+}
+.explorer__move:hover { border-color: var(--accent-dim); }
+.explorer__san { font-weight: 700; font-variant-numeric: tabular-nums; }
+.explorer__bar { height: 8px; background: var(--panel-2); border-radius: 4px; overflow: hidden; }
+.explorer__bar span { display: block; height: 100%; background: var(--accent-dim); }
+.explorer__freq { color: var(--muted); font-size: 0.8rem; text-align: right; }
+.explorer__op { font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 .app__footer {
   margin-top: 2rem;
   padding-top: 1rem;
